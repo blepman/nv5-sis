@@ -10,6 +10,6 @@ Intervallet settes i **Innstillinger** på tavlen (ikke i denne filen).
 
 - Lagres som cookie `nv5_github_interval` (sekunder)
 - Fallback hvis cookie mangler: `$githubCheckIntervalSeconds = 300` i `index.php`
-- `?forceGithub=1` tvinger sjekk (brukes når innstillinger lagres)
+- `?sync=1` tvinger sjekk (brukes når innstillinger lagres)
 
 Trenger PHP med **curl** (eller `allow_url_fopen`) og **zip**.
