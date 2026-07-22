@@ -471,6 +471,17 @@ body {
   padding: 0.7rem 0.75rem;
 }
 
+.settings__all-dirs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.settings__all-dirs span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .settings__results button:hover,
 .settings__results button:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));

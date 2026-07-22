@@ -1,4 +1,37 @@
 (function (global) {
+  const CALL_FIELDS = `
+    expectedDepartureTime
+    aimedDepartureTime
+    realtime
+    cancellation
+    destinationDisplay {
+      frontText
+    }
+    quay {
+      id
+      description
+      publicCode
+    }
+    serviceJourney {
+      line {
+        id
+        publicCode
+        name
+        transportMode
+        presentation {
+          colour
+          textColour
+        }
+      }
+    }
+    situations {
+      summary {
+        language
+        value
+      }
+    }
+  `;
+
   const QUAY_QUERY = `
     query QuayDepartures($id: String!, $numberOfDepartures: Int!) {
       quay(id: $id) {
@@ -7,31 +40,19 @@
         description
         publicCode
         estimatedCalls(numberOfDepartures: $numberOfDepartures) {
-          expectedDepartureTime
-          aimedDepartureTime
-          realtime
-          cancellation
-          destinationDisplay {
-            frontText
-          }
-          serviceJourney {
-            line {
-              id
-              publicCode
-              name
-              transportMode
-              presentation {
-                colour
-                textColour
-              }
-            }
-          }
-          situations {
-            summary {
-              language
-              value
-            }
-          }
+          ${CALL_FIELDS}
+        }
+      }
+    }
+  `;
+
+  const STOP_DEPARTURES_QUERY = `
+    query StopDepartures($id: String!, $numberOfDepartures: Int!) {
+      stopPlace(id: $id) {
+        id
+        name
+        estimatedCalls(numberOfDepartures: $numberOfDepartures) {
+          ${CALL_FIELDS}
         }
       }
     }
@@ -88,14 +109,33 @@
     return payload.data;
   }
 
-  async function fetchDepartures(config, quayId, numberOfDepartures) {
+  async function fetchDepartures(config, place, numberOfDepartures) {
+    const kind = place.kind === "stopPlace" ? "stopPlace" : "quay";
+    const id = place.id;
+    if (kind === "stopPlace") {
+      const data = await graphql(config, STOP_DEPARTURES_QUERY, {
+        id: id,
+        numberOfDepartures: numberOfDepartures,
+      });
+      const stop = data && data.stopPlace;
+      if (!stop) {
+        throw new Error("Fant ikke stopp " + id);
+      }
+      return {
+        id: stop.id,
+        name: stop.name,
+        description: "Alle retninger",
+        departures: (stop.estimatedCalls || []).map(normalizeCall),
+      };
+    }
+
     const data = await graphql(config, QUAY_QUERY, {
-      id: quayId,
+      id: id,
       numberOfDepartures: numberOfDepartures,
     });
     const quay = data && data.quay;
     if (!quay) {
-      throw new Error("Fant ikke kai " + quayId);
+      throw new Error("Fant ikke kai " + id);
     }
 
     return {
@@ -242,6 +282,28 @@
     return (quay.lines || []).map(normalizeLine);
   }
 
+  async function fetchPlaceLines(config, place) {
+    if (place.kind === "stopPlace") {
+      const stop = await fetchStopQuays(config, place.id);
+      const byId = {};
+      (stop.quays || []).forEach(function (quay) {
+        (quay.lines || []).forEach(function (line) {
+          if (line.id) {
+            byId[line.id] = line;
+          }
+        });
+      });
+      return Object.keys(byId)
+        .map(function (id) {
+          return byId[id];
+        })
+        .sort(function (a, b) {
+          return String(a.publicCode).localeCompare(String(b.publicCode), "nb");
+        });
+    }
+    return fetchQuayLines(config, place.id);
+  }
+
   function normalizeLine(line) {
     return {
       id: line.id,
@@ -276,6 +338,7 @@
     const line = (call.serviceJourney && call.serviceJourney.line) || {};
     const presentation = line.presentation || {};
 
+    const quay = call.quay || {};
     return {
       lineId: line.id || "",
       line: line.publicCode || "–",
@@ -291,6 +354,8 @@
       cancelled: Boolean(call.cancellation),
       delayMinutes: delayMinutes,
       situations: situations,
+      quayDescription: quay.description || "",
+      quayCode: quay.publicCode || "",
     };
   }
 
@@ -299,5 +364,6 @@
     searchStops: searchStops,
     fetchStopQuays: fetchStopQuays,
     fetchQuayLines: fetchQuayLines,
+    fetchPlaceLines: fetchPlaceLines,
   };
 })(window);

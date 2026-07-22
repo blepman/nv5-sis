@@ -122,9 +122,13 @@
 
   function cloneQuay(quay) {
     return {
+      kind: quay.kind === "stopPlace" ? "stopPlace" : "quay",
       id: quay.id,
       name: quay.name || quay.id,
-      direction: quay.direction || quay.description || "",
+      direction:
+        quay.direction ||
+        quay.description ||
+        (quay.kind === "stopPlace" ? "Alle retninger" : ""),
       lineIds: Array.isArray(quay.lineIds) ? quay.lineIds.slice() : [],
       availableLines: Array.isArray(quay.availableLines)
         ? quay.availableLines.map(function (line) {
@@ -170,7 +174,7 @@
       return quay;
     }
     try {
-      var lines = await window.NV5Entur.fetchQuayLines(defaults, quay.id);
+      var lines = await window.NV5Entur.fetchPlaceLines(defaults, quay);
       quay.availableLines = lines;
       if (!quay.lineIds || !quay.lineIds.length) {
         quay.lineIds = lines.map(function (line) {
@@ -212,17 +216,21 @@
     return formatClock(departure.expected, false);
   }
 
-  function departureMeta(departure) {
+  function departureMeta(departure, includeDirection) {
+    var parts = [];
     if (departure.cancelled) {
-      return "Innstilt";
+      parts.push("Innstilt");
+    } else if (departure.delayMinutes >= 2) {
+      parts.push("Forsinket " + departure.delayMinutes + " min");
+    } else if (departure.realtime) {
+      parts.push("Sanntid");
+    } else {
+      parts.push("Rutetid");
     }
-    if (departure.delayMinutes >= 2) {
-      return "Forsinket " + departure.delayMinutes + " min";
+    if (includeDirection && departure.quayDescription) {
+      parts.push(departure.quayDescription);
     }
-    if (departure.realtime) {
-      return "Sanntid";
-    }
-    return "Rutetid";
+    return parts.join(" · ");
   }
 
   function escapeHtml(value) {
@@ -278,10 +286,10 @@
     );
   }
 
-  function renderDepartureRow(departure, now) {
+  function renderDepartureRow(departure, now, includeDirection) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
-    var meta = departureMeta(departure);
+    var meta = departureMeta(departure, includeDirection);
     if (departure.situations[0]) {
       meta += " · " + departure.situations[0];
     }
@@ -443,6 +451,7 @@
     var featured = deps.slice(0, featuredCount);
     var upcoming = deps.slice(featuredCount, featuredCount + compactCount);
     var direction = quayConfig.direction || result.description || "";
+    var showDirectionOnRows = quayConfig.kind === "stopPlace";
 
     var html =
       '<section class="quay-board">' +
@@ -466,7 +475,7 @@
 
     html += '<ul class="departures">';
     featured.forEach(function (dep) {
-      html += renderDepartureRow(dep, now);
+      html += renderDepartureRow(dep, now, showDirectionOnRows);
     });
     if (upcoming.length && settings.elementsPerQuay >= 2) {
       html += renderTickerElement(upcoming, now);
@@ -495,7 +504,7 @@
             : needed;
           var result = await window.NV5Entur.fetchDepartures(
             defaults,
-            quay.id,
+            quay,
             fetchCount
           );
           result.departures = filterDeparturesForQuay(
@@ -689,13 +698,43 @@
     try {
       var stop = await window.NV5Entur.fetchStopQuays(defaults, stopId);
       els.quayPick.hidden = false;
-      els.quayPickTitle.textContent = "Velg kai / retning for " + stop.name;
-      if (!stop.quays.length) {
-        els.quayResults.innerHTML =
-          '<li class="settings__empty">Ingen kaier</li>';
-        return;
+      els.quayPickTitle.textContent =
+        "Velg retning for " + stop.name + " (eller alle)";
+      var usefulQuays = (stop.quays || []).filter(function (quay) {
+        return (
+          (quay.lines && quay.lines.length) ||
+          quay.description ||
+          quay.publicCode
+        );
+      });
+      if (!usefulQuays.length) {
+        usefulQuays = stop.quays || [];
       }
-      els.quayResults.innerHTML = stop.quays
+
+      var allLines = [];
+      var lineMap = {};
+      usefulQuays.forEach(function (quay) {
+        (quay.lines || []).forEach(function (line) {
+          if (line.id && !lineMap[line.id]) {
+            lineMap[line.id] = line;
+            allLines.push(line);
+          }
+        });
+      });
+      allLines.sort(function (a, b) {
+        return String(a.publicCode).localeCompare(String(b.publicCode), "nb");
+      });
+
+      var options =
+        '<li><button type="button" class="settings__all-dirs" data-kind="stopPlace" data-quay="' +
+        escapeHtml(stop.id) +
+        '" data-name="' +
+        escapeHtml(stop.name) +
+        '" data-direction="Alle retninger" data-lines="' +
+        escapeHtml(JSON.stringify(allLines)) +
+        '"><strong>Alle retninger</strong><span>Viser avganger begge veier</span></button></li>';
+
+      options += usefulQuays
         .map(function (quay) {
           var modeText = (quay.modes || [])
             .map(function (mode) {
@@ -726,7 +765,7 @@
             (quay.publicCode ? "Plattform " + quay.publicCode : "");
           return (
             "<li>" +
-            '<button type="button" data-quay="' +
+            '<button type="button" data-kind="quay" data-quay="' +
             escapeHtml(quay.id) +
             '" data-name="' +
             escapeHtml(stop.name) +
@@ -741,6 +780,8 @@
           );
         })
         .join("");
+
+      els.quayResults.innerHTML = options;
     } catch (error) {
       console.error(error);
       els.quayResults.innerHTML =
@@ -751,7 +792,7 @@
 
   async function addQuay(quay) {
     var exists = draftQuays.some(function (item) {
-      return item.id === quay.id;
+      return item.id === quay.id && item.kind === (quay.kind || "quay");
     });
     if (exists) {
       return;
@@ -849,6 +890,7 @@
         lines = [];
       }
       addQuay({
+        kind: btn.getAttribute("data-kind") || "quay",
         id: btn.getAttribute("data-quay"),
         name: btn.getAttribute("data-name"),
         direction: btn.getAttribute("data-direction") || "",

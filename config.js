@@ -7,6 +7,8 @@ window.NV5_SIS = {
   // Default: Tveita T mot sentrum
   quays: [
     {
+      // kind: "quay" (én retning) eller "stopPlace" (alle retninger)
+      kind: "quay",
       id: "NSR:Quay:11309",
       name: "Tveita T",
       direction: "Mot sentrum",
