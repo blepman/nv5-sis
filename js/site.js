@@ -692,6 +692,82 @@
     }
   }
 
+  function modeRank(modes) {
+    if ((modes || []).indexOf("metro") !== -1) {
+      return 0;
+    }
+    if ((modes || []).indexOf("tram") !== -1) {
+      return 1;
+    }
+    if ((modes || []).indexOf("rail") !== -1) {
+      return 2;
+    }
+    if ((modes || []).indexOf("bus") !== -1) {
+      return 3;
+    }
+    return 9;
+  }
+
+  function formatQuayChoice(quay) {
+    var modes = quay.modes || [];
+    var modeText = modes
+      .map(function (mode) {
+        return MODE_LABELS[mode] || mode;
+      })
+      .join(", ");
+    if (!modeText && quay.lines && quay.lines.length) {
+      modeText = MODE_LABELS[quay.lines[0].transportMode] || "Kollektiv";
+    }
+
+    var titleParts = [];
+    if (modeText) {
+      titleParts.push(modeText);
+    }
+    if (quay.description) {
+      titleParts.push(quay.description);
+    } else if (quay.publicCode) {
+      titleParts.push("Stoppested " + quay.publicCode);
+    } else {
+      titleParts.push("Kai uten navn");
+    }
+
+    var detailParts = [];
+    if (quay.publicCode) {
+      detailParts.push("Plattform/stopp " + quay.publicCode);
+    }
+    var lineCodes = (quay.lineCodes || []).slice();
+    if (!lineCodes.length && quay.lines) {
+      lineCodes = quay.lines
+        .map(function (line) {
+          return line.publicCode;
+        })
+        .filter(Boolean);
+    }
+    if (lineCodes.length) {
+      var shown = lineCodes.slice(0, 8);
+      detailParts.push(
+        "Linje " +
+          shown.join(", ") +
+          (lineCodes.length > shown.length ? " …" : "")
+      );
+    } else {
+      detailParts.push("Ingen linjer registrert");
+    }
+
+    var direction =
+      quay.description ||
+      (quay.publicCode ? "Stoppested " + quay.publicCode : "") ||
+      modeText ||
+      "Kai";
+
+    return {
+      title: titleParts.join(" · "),
+      detail: detailParts.join(" · "),
+      direction: direction,
+      sortKey: String(100 + modeRank(modes)) + "-" + (quay.publicCode || "zzz"),
+    };
+  }
+
   async function pickStop(stopId, stopName) {
     els.searchResults.innerHTML = "";
     els.stopSearch.value = stopName;
@@ -699,17 +775,24 @@
       var stop = await window.NV5Entur.fetchStopQuays(defaults, stopId);
       els.quayPick.hidden = false;
       els.quayPickTitle.textContent =
-        "Velg retning for " + stop.name + " (eller alle)";
+        "Velg retning/plattform for " + stop.name + " (eller alle)";
+
+      // Kun kaier med linjer — de andre er ofte uten avganger
       var usefulQuays = (stop.quays || []).filter(function (quay) {
-        return (
-          (quay.lines && quay.lines.length) ||
-          quay.description ||
-          quay.publicCode
-        );
+        return quay.lines && quay.lines.length;
       });
       if (!usefulQuays.length) {
-        usefulQuays = stop.quays || [];
+        usefulQuays = (stop.quays || []).filter(function (quay) {
+          return quay.description || quay.publicCode;
+        });
       }
+
+      usefulQuays.sort(function (a, b) {
+        return formatQuayChoice(a).sortKey.localeCompare(
+          formatQuayChoice(b).sortKey,
+          "nb"
+        );
+      });
 
       var allLines = [];
       var lineMap = {};
@@ -726,56 +809,32 @@
       });
 
       var options =
-        '<li><button type="button" class="settings__all-dirs" data-kind="stopPlace" data-quay="' +
+        '<li><button type="button" class="settings__choice" data-kind="stopPlace" data-quay="' +
         escapeHtml(stop.id) +
         '" data-name="' +
         escapeHtml(stop.name) +
         '" data-direction="Alle retninger" data-lines="' +
         escapeHtml(JSON.stringify(allLines)) +
-        '"><strong>Alle retninger</strong><span>Viser avganger begge veier</span></button></li>';
+        '"><strong>Alle retninger</strong><span>Viser avganger for hele holdeplassen</span></button></li>';
 
       options += usefulQuays
         .map(function (quay) {
-          var modeText = (quay.modes || [])
-            .map(function (mode) {
-              return MODE_LABELS[mode] || mode;
-            })
-            .join(", ");
-          var parts = [];
-          if (modeText) {
-            parts.push(modeText);
-          }
-          if (quay.description) {
-            parts.push(quay.description);
-          } else if (quay.publicCode) {
-            parts.push("Plattform " + quay.publicCode);
-          } else {
-            parts.push(quay.name || "Kai");
-          }
-          if (quay.publicCode && quay.description) {
-            parts.push("(" + quay.publicCode + ")");
-          }
-          if (quay.lineCodes && quay.lineCodes.length) {
-            parts.push("linje " + quay.lineCodes.join(", "));
-          }
-          var label = parts.join(" · ");
-          var direction =
-            quay.description ||
-            (modeText ? modeText : "") ||
-            (quay.publicCode ? "Plattform " + quay.publicCode : "");
+          var choice = formatQuayChoice(quay);
           return (
             "<li>" +
-            '<button type="button" data-kind="quay" data-quay="' +
+            '<button type="button" class="settings__choice" data-kind="quay" data-quay="' +
             escapeHtml(quay.id) +
             '" data-name="' +
             escapeHtml(stop.name) +
             '" data-direction="' +
-            escapeHtml(direction) +
+            escapeHtml(choice.direction) +
             '" data-lines="' +
             escapeHtml(JSON.stringify(quay.lines || [])) +
-            '">' +
-            escapeHtml(label) +
-            "</button>" +
+            '"><strong>' +
+            escapeHtml(choice.title) +
+            "</strong><span>" +
+            escapeHtml(choice.detail) +
+            "</span></button>" +
             "</li>"
           );
         })
