@@ -702,7 +702,7 @@
     closeSettings();
     // Last siden på nytt slik at PHP leser cookie og kan hente ny kode
     var url = new URL(window.location.href);
-    url.searchParams.set("forceGithub", "1");
+    url.searchParams.set("sync", "1");
     window.location.replace(url.toString());
   }
 
