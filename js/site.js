@@ -540,7 +540,7 @@
     return { text: "Venter…", state: "is-pending" };
   }
 
-  function boardSignature(entries) {
+  function boardSignature(entries, now) {
     return entries
       .map(function (entry) {
         var deps =
@@ -551,12 +551,12 @@
               dep.lineId || "",
               dep.line || "",
               dep.destination || "",
+              formatDepartureLabel(dep, now),
               dep.expected ? dep.expected.toISOString() : "",
-              dep.aimed ? dep.aimed.toISOString() : "",
               dep.cancelled ? "1" : "0",
               dep.realtime ? "1" : "0",
               String(dep.delayMinutes || 0),
-              dep.quayDescription || "",
+              entry.stale ? "s" : "f",
             ].join(",");
           })
           .join(";");
@@ -686,7 +686,7 @@
   }
 
   function renderBoards(entries, now) {
-    var signature = boardSignature(entries);
+    var signature = boardSignature(entries, now);
     if (
       signature === lastBoardSignature &&
       els.boards.children.length === entries.length
@@ -696,11 +696,12 @@
       return;
     }
 
+    var animate = !lastBoardSignature;
     lastBoardSignature = signature;
     stopTickers();
     els.boards.innerHTML = entries
       .map(function (entry) {
-        return renderQuayBoard(entry, now, true);
+        return renderQuayBoard(entry, now, animate);
       })
       .join("");
     startTickers();
