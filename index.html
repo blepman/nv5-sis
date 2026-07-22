@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nb">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>Tveita T – Mot sentrum</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/kiosk.css" />
+  </head>
+  <body>
+    <div class="board" id="board">
+      <header class="board__header">
+        <div class="board__titles">
+          <p class="board__eyebrow">Sanntid</p>
+          <h1 class="board__stop" id="stopName">Tveita T</h1>
+          <p class="board__direction" id="directionLabel">Mot sentrum</p>
+        </div>
+        <div class="board__clock" aria-live="polite">
+          <time id="clock" datetime="">--:--</time>
+        </div>
+      </header>
+
+      <main class="board__main">
+        <div class="board__columns" aria-hidden="true">
+          <span>Linje</span>
+          <span>Destinasjon</span>
+          <span>Avgang</span>
+        </div>
+        <ul class="departures" id="departures" aria-live="polite"></ul>
+        <p class="board__status" id="status" hidden></p>
+      </main>
+
+      <footer class="board__footer">
+        <span id="updated">Oppdaterer…</span>
+        <span class="board__source">Data fra Entur</span>
+      </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="js/entur.js"></script>
+    <script src="js/kiosk.js"></script>
+  </body>
+</html>
