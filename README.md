@@ -6,15 +6,10 @@ Last opp til `nv5.haatetepe.no/sis/`.
 
 ## GitHub-sjekk
 
-Øverst i `index.php`:
+Intervallet settes i **Innstillinger** på tavlen (ikke i denne filen).
 
-```php
-$githubCheckIntervalSeconds = 300; // sekunder mellom GitHub-sjekker
-```
-
-- `300` = sjekk maks hvert 5. minutt (standard)
-- `0` = sjekk ved hvert besøk
-
-Mellom sjekkene vises cached `content/`.
+- Lagres som cookie `nv5_github_interval` (sekunder)
+- Fallback hvis cookie mangler: `$githubCheckIntervalSeconds = 300` i `index.php`
+- `?forceGithub=1` tvinger sjekk (brukes når innstillinger lagres)
 
 Trenger PHP med **curl** (eller `allow_url_fopen`) og **zip**.

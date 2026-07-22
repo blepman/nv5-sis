@@ -4,11 +4,18 @@ declare(strict_types=1);
 /**
  * Speiler main-branchen fra GitHub og viser tavlen.
  *
- * Juster $githubCheckIntervalSeconds for hvor ofte GitHub sjekkes (sekunder).
- * Standard: 300 = 5 minutter. Sett til 0 for å sjekke ved hvert besøk.
+ * Intervall styres fra Innstillinger på tavlen (cookie nv5_github_interval).
+ * $githubCheckIntervalSeconds er fallback hvis cookie mangler.
+ * ?forceGithub=1 tvinger sjekk uansett intervall.
  */
 
 $githubCheckIntervalSeconds = 300;
+
+if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !== '') {
+    $githubCheckIntervalSeconds = max(0, min(86400, (int) $_COOKIE['nv5_github_interval']));
+}
+
+$forceGithub = isset($_GET['forceGithub']) && $_GET['forceGithub'] === '1';
 
 $owner = 'blepman';
 $repo = 'nv5-sis';
@@ -22,7 +29,7 @@ $shaFile = $root . '/.last-sha';
 $checkFile = $root . '/.last-check';
 
 try {
-    if (should_check_github($githubCheckIntervalSeconds, $content, $checkFile)) {
+    if ($forceGithub || should_check_github($githubCheckIntervalSeconds, $content, $checkFile)) {
         sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
         file_put_contents($checkFile, (string) time());
     }
