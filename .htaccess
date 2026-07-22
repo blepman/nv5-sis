@@ -1,2 +1,15 @@
 DirectoryIndex index.php
 Options -Indexes
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(woff2|png|webmanifest)$">
+    Header set Cache-Control "public, max-age=604800, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=300"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>

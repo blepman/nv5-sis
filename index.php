@@ -27,11 +27,22 @@ $content = $root . '/content';
 $tmp = $root . '/content.tmp';
 $shaFile = $root . '/.last-sha';
 $checkFile = $root . '/.last-check';
+$lockFile = $root . '/.sync.lock';
 
 try {
-    if ($forceSync || should_check_github($githubCheckIntervalSeconds, $content, $checkFile)) {
-        sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
-        file_put_contents($checkFile, (string) time());
+    $shouldSync = $forceSync || should_check_github($githubCheckIntervalSeconds, $content, $checkFile);
+    if ($shouldSync) {
+        // Ikke blokker visning hvis en annen request allerede synker
+        if (try_sync_lock($lockFile, function () use ($owner, $repo, $branch, $ua, $content, $tmp, $shaFile, $checkFile): void {
+            sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
+            file_put_contents($checkFile, (string) time());
+        }) === false && !is_file($content . '/index.html')) {
+            // Første oppsett: vent kort på lås
+            try_sync_lock($lockFile, function () use ($owner, $repo, $branch, $ua, $content, $tmp, $shaFile, $checkFile): void {
+                sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
+                file_put_contents($checkFile, (string) time());
+            }, true);
+        }
     }
     render($content);
 } catch (Throwable $e) {
@@ -44,6 +55,31 @@ try {
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="nb"><meta charset="utf-8"><title>SIS</title>';
     echo '<h1>Tavlen er ikke klar</h1><p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
+}
+
+/**
+ * @param callable():void $fn
+ */
+function try_sync_lock(string $lockFile, callable $fn, bool $blocking = false): bool
+{
+    $fh = fopen($lockFile, 'c+');
+    if ($fh === false) {
+        return false;
+    }
+
+    $flags = $blocking ? LOCK_EX : (LOCK_EX | LOCK_NB);
+    if (!flock($fh, $flags)) {
+        fclose($fh);
+        return false;
+    }
+
+    try {
+        $fn();
+        return true;
+    } finally {
+        flock($fh, LOCK_UN);
+        fclose($fh);
+    }
 }
 
 function should_check_github(int $intervalSeconds, string $content, string $checkFile): bool
@@ -74,7 +110,8 @@ function github_get(string $url, string $ua): string
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT => 60,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_HTTPHEADER => $headers,
         ]);
         $body = curl_exec($ch);
@@ -94,7 +131,7 @@ function github_get(string $url, string $ua): string
         'http' => [
             'method' => 'GET',
             'header' => implode("\r\n", $headers),
-            'timeout' => 60,
+            'timeout' => 20,
             'ignore_errors' => true,
         ],
     ]);
