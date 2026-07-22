@@ -422,7 +422,8 @@
       var lastTs = 0;
       var activeIndex = -1;
       var rafId = 0;
-      var speedPxPerSec = 18;
+      var speedPxPerSec = 14;
+      var started = false;
 
       function setActive(index) {
         if (index === activeIndex || !items[index]) {
@@ -456,13 +457,22 @@
 
         var step = measureStep();
         var loopHeight = step * items.length;
+        var viewHeight = slot.clientHeight;
+
+        // Start med første tid nær bunnen, så den ruller oppover
+        if (!started && step > 0 && viewHeight > 0) {
+          offset = -Math.max(0, viewHeight - step - 6);
+          started = true;
+        }
+
         if (loopHeight > 0) {
           offset += speedPxPerSec * dt;
-          if (offset >= loopHeight) {
+          while (offset >= loopHeight) {
             offset -= loopHeight;
           }
           track.style.transform = "translate3d(0, " + -offset + "px, 0)";
-          setActive(Math.floor(offset / step) % items.length);
+          var visual = offset < 0 ? 0 : offset;
+          setActive(Math.floor(visual / step) % items.length);
         }
 
         rafId = window.requestAnimationFrame(frame);
