@@ -322,12 +322,25 @@ body {
   user-select: text;
 }
 
-.settings__header,
-.settings__footer {
+.settings__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -1rem -1rem 0;
+  padding: 1rem;
+  background: #121a2b;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .settings__header h2,
@@ -365,8 +378,8 @@ body {
 }
 
 .settings__save {
-  width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
   font-weight: 600;
   background: color-mix(in srgb, var(--accent) 20%, var(--bg));
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));

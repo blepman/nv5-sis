@@ -52,7 +52,12 @@
       <form method="dialog" class="settings__panel" id="settingsForm">
         <header class="settings__header">
           <h2>Innstillinger</h2>
-          <button type="submit" class="settings__close" value="cancel">Lukk</button>
+          <div class="settings__header-actions">
+            <button type="button" class="settings__save" id="settingsSave">
+              Lagre
+            </button>
+            <button type="submit" class="settings__close" value="cancel">Lukk</button>
+          </div>
         </header>
 
         <label class="settings__field">
@@ -106,12 +111,6 @@
             <ul class="settings__results" id="quayResults"></ul>
           </div>
         </section>
-
-        <footer class="settings__footer">
-          <button type="button" class="settings__save" id="settingsSave">
-            Lagre
-          </button>
-        </footer>
       </form>
     </dialog>
 
