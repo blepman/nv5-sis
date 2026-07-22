@@ -28,7 +28,7 @@
   let wakeLock = null;
   let refreshTimer = null;
   let searchTimer = null;
-  let tickerTimers = [];
+  let tickerStops = [];
   let draftQuays = settings.quays.slice();
 
   const MODE_LABELS = {
@@ -371,20 +371,18 @@
       "</div>" +
       '<span class="departure__time departure__ticker' +
       (items[0].now ? " is-now" : "") +
-      '" aria-live="off">' +
-      '<span class="departure__ticker-item is-in">' +
-      escapeHtml(items[0].time) +
-      "</span>" +
-      "</span>" +
+      '" aria-live="off"></span>' +
       "</li>"
     );
   }
 
   function stopTickers() {
-    tickerTimers.forEach(function (id) {
-      clearInterval(id);
+    tickerStops.forEach(function (stop) {
+      if (typeof stop === "function") {
+        stop();
+      }
     });
-    tickerTimers = [];
+    tickerStops = [];
   }
 
   function startTickers() {
@@ -398,7 +396,7 @@
       } catch (error) {
         items = [];
       }
-      if (items.length < 2) {
+      if (!items.length) {
         return;
       }
       var slot = node.querySelector(".departure__ticker");
@@ -406,41 +404,75 @@
       if (!slot) {
         return;
       }
-      var index = 0;
-      var animating = false;
-      var timer = setInterval(function () {
-        if (animating) {
+
+      var track = document.createElement("span");
+      track.className = "departure__ticker-track";
+      var sequence = items.concat(items);
+      sequence.forEach(function (item, index) {
+        var el = document.createElement("span");
+        el.className = "departure__ticker-item";
+        el.textContent = item.time;
+        el.setAttribute("data-item-index", String(index % items.length));
+        track.appendChild(el);
+      });
+      slot.innerHTML = "";
+      slot.appendChild(track);
+
+      var offset = 0;
+      var lastTs = 0;
+      var activeIndex = -1;
+      var rafId = 0;
+      var speedPxPerSec = 18;
+
+      function setActive(index) {
+        if (index === activeIndex || !items[index]) {
           return;
         }
-        animating = true;
-        var current = slot.querySelector(".departure__ticker-item");
-        index = (index + 1) % items.length;
-        var next = items[index];
-
-        if (current) {
-          current.classList.remove("is-in");
-          current.classList.add("is-out");
-        }
-
-        var incoming = document.createElement("span");
-        incoming.className = "departure__ticker-item is-in";
-        incoming.textContent = next.time;
-        slot.appendChild(incoming);
-
+        activeIndex = index;
+        var item = items[index];
         if (meta) {
-          meta.textContent = next.kind;
-          meta.classList.toggle("is-late", Boolean(next.late));
+          meta.textContent = item.kind;
+          meta.classList.toggle("is-late", Boolean(item.late));
         }
-        slot.classList.toggle("is-now", Boolean(next.now));
+        slot.classList.toggle("is-now", Boolean(item.now));
+      }
 
-        window.setTimeout(function () {
-          if (current && current.parentNode) {
-            current.parentNode.removeChild(current);
+      function measureStep() {
+        var first = track.children[0];
+        if (!first) {
+          return 28;
+        }
+        var styles = window.getComputedStyle(track);
+        var gap = parseFloat(styles.rowGap || styles.gap || "0") || 0;
+        return first.getBoundingClientRect().height + gap;
+      }
+
+      function frame(ts) {
+        if (!lastTs) {
+          lastTs = ts;
+        }
+        var dt = Math.min(0.05, (ts - lastTs) / 1000);
+        lastTs = ts;
+
+        var step = measureStep();
+        var loopHeight = step * items.length;
+        if (loopHeight > 0) {
+          offset += speedPxPerSec * dt;
+          if (offset >= loopHeight) {
+            offset -= loopHeight;
           }
-          animating = false;
-        }, 600);
-      }, 2800);
-      tickerTimers.push(timer);
+          track.style.transform = "translate3d(0, " + -offset + "px, 0)";
+          setActive(Math.floor(offset / step) % items.length);
+        }
+
+        rafId = window.requestAnimationFrame(frame);
+      }
+
+      setActive(0);
+      rafId = window.requestAnimationFrame(frame);
+      tickerStops.push(function () {
+        window.cancelAnimationFrame(rafId);
+      });
     });
   }
 

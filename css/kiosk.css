@@ -201,27 +201,41 @@ body {
   overflow: hidden;
   display: block;
   text-align: right;
+  /* Synlig rulleflate: tider fades litt før topp/bunn */
+  padding: 0.35rem 0;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 0.4rem,
+    #000 calc(100% - 0.4rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 0.4rem,
+    #000 calc(100% - 0.4rem),
+    transparent 100%
+  );
+}
+
+.departure__ticker-track {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  will-change: transform;
 }
 
 .departure__ticker-item {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  position: static;
+  display: block;
+  flex: 0 0 auto;
+  line-height: 1.15;
   font-family: var(--mono);
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  will-change: transform, opacity;
-}
-
-.departure__ticker-item.is-in {
-  animation: ticker-up-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.departure__ticker-item.is-out {
-  animation: ticker-up-out 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .departure__line {
@@ -521,27 +535,6 @@ body {
   }
 }
 
-@keyframes ticker-up-in {
-  from {
-    opacity: 0.15;
-    transform: translateY(110%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes ticker-up-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-110%);
-  }
-}
 
 @media (orientation: landscape) and (max-height: 500px) {
   .board {
