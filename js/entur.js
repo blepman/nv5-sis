@@ -1,14 +1,16 @@
 (function (global) {
-  const QUERY = `
+  const QUAY_QUERY = `
     query QuayDepartures($id: String!, $numberOfDepartures: Int!) {
       quay(id: $id) {
         id
         name
         description
+        publicCode
         estimatedCalls(numberOfDepartures: $numberOfDepartures) {
           expectedDepartureTime
           aimedDepartureTime
           realtime
+          cancellation
           destinationDisplay {
             frontText
           }
@@ -17,6 +19,10 @@
               publicCode
               name
               transportMode
+              presentation {
+                colour
+                textColour
+              }
             }
           }
           situations {
@@ -30,20 +36,29 @@
     }
   `;
 
-  async function fetchDepartures(config) {
+  const STOP_QUAYS_QUERY = `
+    query StopQuays($id: String!) {
+      stopPlace(id: $id) {
+        id
+        name
+        quays {
+          id
+          name
+          description
+          publicCode
+        }
+      }
+    }
+  `;
+
+  async function graphql(config, query, variables) {
     const response = await fetch(config.enturUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "ET-Client-Name": config.clientName,
       },
-      body: JSON.stringify({
-        query: QUERY,
-        variables: {
-          id: config.quayId,
-          numberOfDepartures: config.numberOfDepartures,
-        },
-      }),
+      body: JSON.stringify({ query: query, variables: variables }),
     });
 
     if (!response.ok) {
@@ -54,16 +69,73 @@
     if (payload.errors && payload.errors.length) {
       throw new Error(payload.errors[0].message || "GraphQL-feil fra Entur");
     }
+    return payload.data;
+  }
 
-    const quay = payload.data && payload.data.quay;
+  async function fetchDepartures(config, quayId, numberOfDepartures) {
+    const data = await graphql(config, QUAY_QUERY, {
+      id: quayId,
+      numberOfDepartures: numberOfDepartures,
+    });
+    const quay = data && data.quay;
     if (!quay) {
-      throw new Error("Fant ikke kai " + config.quayId);
+      throw new Error("Fant ikke kai " + quayId);
     }
 
     return {
+      id: quay.id,
       name: quay.name,
       description: quay.description,
+      publicCode: quay.publicCode,
       departures: (quay.estimatedCalls || []).map(normalizeCall),
+    };
+  }
+
+  async function searchStops(config, text) {
+    const url =
+      config.geocoderUrl +
+      "?text=" +
+      encodeURIComponent(text) +
+      "&lang=no&size=8&layers=venue";
+    const response = await fetch(url, {
+      headers: { "ET-Client-Name": config.clientName },
+    });
+    if (!response.ok) {
+      throw new Error("Geocoder HTTP " + response.status);
+    }
+    const payload = await response.json();
+    return (payload.features || [])
+      .map(function (feature) {
+        const p = feature.properties || {};
+        return {
+          id: p.id,
+          name: p.name || p.label || p.id,
+          label: p.label || p.name || p.id,
+          category: p.category || [],
+        };
+      })
+      .filter(function (item) {
+        return item.id && String(item.id).indexOf("NSR:StopPlace:") === 0;
+      });
+  }
+
+  async function fetchStopQuays(config, stopPlaceId) {
+    const data = await graphql(config, STOP_QUAYS_QUERY, { id: stopPlaceId });
+    const stop = data && data.stopPlace;
+    if (!stop) {
+      throw new Error("Fant ikke stopp " + stopPlaceId);
+    }
+    return {
+      id: stop.id,
+      name: stop.name,
+      quays: (stop.quays || []).map(function (quay) {
+        return {
+          id: quay.id,
+          name: quay.name || stop.name,
+          description: quay.description || "",
+          publicCode: quay.publicCode || "",
+        };
+      }),
     };
   }
 
@@ -89,22 +161,21 @@
       })
       .filter(Boolean);
 
+    const line = (call.serviceJourney && call.serviceJourney.line) || {};
+    const presentation = line.presentation || {};
+
     return {
-      line: (call.serviceJourney &&
-        call.serviceJourney.line &&
-        call.serviceJourney.line.publicCode) ||
-        "–",
+      line: line.publicCode || "–",
       destination:
         (call.destinationDisplay && call.destinationDisplay.frontText) ||
         "Ukjent",
-      mode:
-        (call.serviceJourney &&
-          call.serviceJourney.line &&
-          call.serviceJourney.line.transportMode) ||
-        "",
+      mode: line.transportMode || "",
+      colour: presentation.colour ? "#" + presentation.colour : "",
+      textColour: presentation.textColour ? "#" + presentation.textColour : "",
       expected: expected,
       aimed: aimed,
       realtime: Boolean(call.realtime),
+      cancelled: Boolean(call.cancellation),
       delayMinutes: delayMinutes,
       situations: situations,
     };
@@ -112,5 +183,7 @@
 
   global.NV5Entur = {
     fetchDepartures: fetchDepartures,
+    searchStops: searchStops,
+    fetchStopQuays: fetchStopQuays,
   };
 })(window);

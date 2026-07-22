@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#0b1220" />
-    <title>Tveita T – Mot sentrum</title>
+    <title>NV5 SIS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,32 +24,83 @@
       <header class="board__header">
         <div class="board__titles">
           <p class="board__eyebrow">Sanntid</p>
-          <h1 class="board__stop" id="stopName">Tveita T</h1>
-          <p class="board__direction" id="directionLabel">Mot sentrum</p>
+          <h1 class="board__stop" id="boardTitle">Avganger</h1>
         </div>
-        <div class="board__clock" aria-live="polite">
-          <time id="clock" datetime="">--:--:--</time>
+        <div class="board__header-right">
+          <button
+            type="button"
+            class="settings-btn"
+            id="settingsOpen"
+            aria-label="Innstillinger"
+          >
+            Innstillinger
+          </button>
+          <div class="board__clock" aria-live="polite">
+            <time id="clock" datetime="">--:--:--</time>
+            <p class="board__updated" id="updated">Oppdaterer…</p>
+          </div>
         </div>
       </header>
 
       <main class="board__main">
-        <div class="board__columns" aria-hidden="true">
-          <span>Linje</span>
-          <span>Destinasjon</span>
-          <span>Avgang</span>
-        </div>
-        <ul class="departures" id="departures" aria-live="polite"></ul>
+        <div id="boards" class="boards" aria-live="polite"></div>
         <p class="board__status" id="status" hidden></p>
       </main>
-
-      <footer class="board__footer">
-        <span id="updated">Oppdaterer…</span>
-        <span class="board__source">Data fra Entur</span>
-      </footer>
     </div>
+
+    <dialog class="settings" id="settingsDialog">
+      <form method="dialog" class="settings__panel" id="settingsForm">
+        <header class="settings__header">
+          <h2>Innstillinger</h2>
+          <button type="submit" class="settings__close" value="cancel">Lukk</button>
+        </header>
+
+        <label class="settings__field">
+          <span>Elementer per holdeplass</span>
+          <input
+            type="number"
+            id="elementsPerQuay"
+            min="2"
+            max="8"
+            step="1"
+            value="3"
+          />
+          <small>Siste element viser de neste 3–4 avgangene</small>
+        </label>
+
+        <section class="settings__section">
+          <h3>Valgte holdeplasser</h3>
+          <ul class="settings__quays" id="selectedQuays"></ul>
+        </section>
+
+        <section class="settings__section">
+          <h3>Legg til holdeplass</h3>
+          <label class="settings__field">
+            <span>Søk</span>
+            <input
+              type="search"
+              id="stopSearch"
+              placeholder="F.eks. Tveita T"
+              autocomplete="off"
+            />
+          </label>
+          <ul class="settings__results" id="searchResults"></ul>
+          <div class="settings__quay-pick" id="quayPick" hidden>
+            <p class="settings__hint" id="quayPickTitle"></p>
+            <ul class="settings__results" id="quayResults"></ul>
+          </div>
+        </section>
+
+        <footer class="settings__footer">
+          <button type="button" class="settings__save" id="settingsSave">
+            Lagre
+          </button>
+        </footer>
+      </form>
+    </dialog>
 
     <script src="config.js"></script>
     <script src="js/entur.js"></script>
-    <script src="js/kiosk.js"></script>
+    <script src="js/site.js"></script>
   </body>
 </html>

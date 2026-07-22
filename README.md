@@ -1,46 +1,45 @@
 # nv5-sis
 
-Sanntidstavle for **Tveita T** (mot sentrum), vist på `https://nv5.haatetepe.no/sis/` i kioskmodus på iPhone.
+Sanntidstavle vist på `https://nv5.haatetepe.no/sis/` (speilet fra denne `main`-branchen av `server`/PHP).
 
 ## Branch-modell
 
 | Branch | Innhold |
 |--------|---------|
-| `main` | Selve tavlen (denne branchen): HTML/CSS/JS mot Entur |
-| `server` | PHP som lastes opp til `/sis` og synker/viser `main` |
+| `main` | Tavlen (HTML/CSS/JS) |
+| `server` | PHP som speiler `main` til `/sis` |
 | `feature/*` | Ny funksjonalitet → merge til `main` |
 
-Når noe merges til `main`, oppdager PHP på serveren ny commit og oppdaterer tavlen automatisk. Du trenger ikke laste opp `main` manuelt.
+## Holdeplasser og elementer
 
-## Holdeplass
+- Standard: **Tveita T** kai `NSR:Quay:11309` (mot sentrum)
+- **Innstillinger** på siden: søk holdeplass, velg kai/retning, sett antall elementer
+- Valg lagres i `localStorage`
+- Standard **3 elementer** per quay:
+  1. Neste avgang
+  2. Avgang nr. 2
+  3. Neste 3–4 avganger (kompakt, med linje/destinasjon/tid)
 
-- Stopp: Tveita T
-- Kai: `NSR:Quay:11309` (retning sentrum)
-- API: Entur Journey Planner v3 GraphQL
-- Klientnavn: `haatetepe-nv5-sis` (settes i `config.js`)
+## Filer
+
+- `index.html` – layout
+- `config.js` – defaults
+- `js/entur.js` – Entur GraphQL + geocoder
+- `js/site.js` – UI, poll, innstillinger
+- `css/kiosk.css` – stil
 
 ## Lokal preview
-
-Åpne `index.html` via en enkel statisk server (fetch mot Entur krever HTTP(S), ikke `file://`):
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Gå til `http://localhost:8080`.
+Åpne `http://localhost:8080`.
 
 ## Kiosk på iPhone
 
-1. Åpne `https://nv5.haatetepe.no/sis/` i Safari
+1. Åpne `/sis/` i Safari
 2. Del → **Legg til på Hjem-skjerm**
-3. Åpne snarveien (standalone)
-4. Valgfritt: **Guided Access** for å låse skjermen til appen
+3. Valgfritt: Guided Access
 
-Tavlen henter avganger ca. hvert 30. sekund, laster siden på nytt ca. hvert 5. minutt (for å plukke opp ny kode fra `main`), og forsøker Screen Wake Lock der det støttes.
-
-## Utvikling
-
-1. Opprett `feature/...` fra `main`
-2. Endre tavlen, test lokalt
-3. Merge til `main`
-4. Vent på sync (cron / token-kall på server) — kiosken viser ny versjon
+Tavlen henter avganger ca. hvert 30. sekund og laster siden på nytt ca. hvert 5. minutt.
