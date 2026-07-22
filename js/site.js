@@ -263,8 +263,13 @@
       return "";
     }
     var first = departures[0];
-    var times = departures.map(function (dep) {
-      return formatDepartureLabel(dep, now);
+    var items = departures.map(function (dep) {
+      return {
+        time: formatDepartureLabel(dep, now),
+        kind: departureMeta(dep),
+        late: dep.delayMinutes >= 2 || dep.cancelled,
+        now: formatDepartureLabel(dep, now) === "Nå",
+      };
     });
     var destinations = departures
       .map(function (dep) {
@@ -275,11 +280,10 @@
       });
     var destinationLabel =
       destinations.length === 1 ? destinations[0] : "Neste avganger";
-    var meta = "Ticker · " + times.length + " avganger";
 
     return (
-      '<li class="departure departure--ticker" data-ticker-times="' +
-      escapeHtml(JSON.stringify(times)) +
+      '<li class="departure departure--ticker" data-ticker-items="' +
+      escapeHtml(JSON.stringify(items)) +
       '">' +
       '<span class="departure__line"' +
       lineStyleAttr(first) +
@@ -290,13 +294,17 @@
       '<div class="departure__destination">' +
       escapeHtml(destinationLabel) +
       "</div>" +
-      '<div class="departure__meta">' +
-      escapeHtml(meta) +
+      '<div class="departure__meta' +
+      (items[0].late ? " is-late" : "") +
+      '" data-ticker-meta>' +
+      escapeHtml(items[0].kind) +
       "</div>" +
       "</div>" +
-      '<span class="departure__time departure__ticker" aria-live="off">' +
-      '<span class="departure__ticker-item is-active">' +
-      escapeHtml(times[0]) +
+      '<span class="departure__time departure__ticker' +
+      (items[0].now ? " is-now" : "") +
+      '" aria-live="off">' +
+      '<span class="departure__ticker-item is-in">' +
+      escapeHtml(items[0].time) +
       "</span>" +
       "</span>" +
       "</li>"
@@ -314,28 +322,55 @@
     stopTickers();
     var nodes = els.boards.querySelectorAll(".departure--ticker");
     nodes.forEach(function (node) {
-      var raw = node.getAttribute("data-ticker-times") || "[]";
-      var times;
+      var raw = node.getAttribute("data-ticker-items") || "[]";
+      var items;
       try {
-        times = JSON.parse(raw);
+        items = JSON.parse(raw);
       } catch (error) {
-        times = [];
+        items = [];
       }
-      if (!times.length) {
+      if (items.length < 2) {
         return;
       }
       var slot = node.querySelector(".departure__ticker");
+      var meta = node.querySelector("[data-ticker-meta]");
       if (!slot) {
         return;
       }
       var index = 0;
+      var animating = false;
       var timer = setInterval(function () {
-        index = (index + 1) % times.length;
-        slot.innerHTML =
-          '<span class="departure__ticker-item is-active">' +
-          escapeHtml(times[index]) +
-          "</span>";
-      }, 2500);
+        if (animating) {
+          return;
+        }
+        animating = true;
+        var current = slot.querySelector(".departure__ticker-item");
+        index = (index + 1) % items.length;
+        var next = items[index];
+
+        if (current) {
+          current.classList.remove("is-in");
+          current.classList.add("is-out");
+        }
+
+        var incoming = document.createElement("span");
+        incoming.className = "departure__ticker-item is-in";
+        incoming.textContent = next.time;
+        slot.appendChild(incoming);
+
+        if (meta) {
+          meta.textContent = next.kind;
+          meta.classList.toggle("is-late", Boolean(next.late));
+        }
+        slot.classList.toggle("is-now", Boolean(next.now));
+
+        window.setTimeout(function () {
+          if (current && current.parentNode) {
+            current.parentNode.removeChild(current);
+          }
+          animating = false;
+        }, 600);
+      }, 2800);
       tickerTimers.push(timer);
     });
   }
