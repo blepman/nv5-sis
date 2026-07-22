@@ -378,7 +378,8 @@ body {
   font-size: 0.75rem;
 }
 
-.settings__field input {
+.settings__field input,
+.settings__field select {
   font: inherit;
   padding: 0.65rem 0.75rem;
   border-radius: 0.3rem;

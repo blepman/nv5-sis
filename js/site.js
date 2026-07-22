@@ -15,6 +15,7 @@
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
+    githubCheckInterval: document.getElementById("githubCheckInterval"),
     selectedQuays: document.getElementById("selectedQuays"),
     stopSearch: document.getElementById("stopSearch"),
     searchResults: document.getElementById("searchResults"),
@@ -29,12 +30,51 @@
   let searchTimer = null;
   let draftQuays = settings.quays.slice();
 
+  function normalizeGithubInterval(value) {
+    var seconds = Number(value);
+    if (!isFinite(seconds) || seconds < 0) {
+      return defaults.githubCheckIntervalSeconds || 300;
+    }
+    return Math.min(86400, Math.round(seconds));
+  }
+
+  function readGithubIntervalCookie() {
+    var name = defaults.githubIntervalCookie || "nv5_github_interval";
+    var parts = String(document.cookie || "").split(";");
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i].trim();
+      if (part.indexOf(name + "=") === 0) {
+        return normalizeGithubInterval(part.slice(name.length + 1));
+      }
+    }
+    return null;
+  }
+
+  function writeGithubIntervalCookie(seconds) {
+    var name = defaults.githubIntervalCookie || "nv5_github_interval";
+    var maxAge = 60 * 60 * 24 * 365;
+    document.cookie =
+      name +
+      "=" +
+      encodeURIComponent(String(seconds)) +
+      "; path=/sis/; max-age=" +
+      maxAge +
+      "; SameSite=Lax";
+  }
+
   function loadSettings() {
     var base = {
       quays: (defaults.quays || []).map(cloneQuay),
       elementsPerQuay: defaults.elementsPerQuay || 3,
       compactDepartures: defaults.compactDepartures || 4,
+      githubCheckIntervalSeconds: normalizeGithubInterval(
+        defaults.githubCheckIntervalSeconds || 300
+      ),
     };
+    var cookieInterval = readGithubIntervalCookie();
+    if (cookieInterval !== null) {
+      base.githubCheckIntervalSeconds = cookieInterval;
+    }
     try {
       var raw = localStorage.getItem(defaults.storageKey);
       if (!raw) {
@@ -46,6 +86,11 @@
       }
       if (parsed.elementsPerQuay) {
         base.elementsPerQuay = Math.max(2, Math.min(8, Number(parsed.elementsPerQuay) || 3));
+      }
+      if (parsed.githubCheckIntervalSeconds !== undefined) {
+        base.githubCheckIntervalSeconds = normalizeGithubInterval(
+          parsed.githubCheckIntervalSeconds
+        );
       }
     } catch (error) {
       console.warn("Kunne ikke lese innstillinger", error);
@@ -59,8 +104,10 @@
       JSON.stringify({
         quays: settings.quays,
         elementsPerQuay: settings.elementsPerQuay,
+        githubCheckIntervalSeconds: settings.githubCheckIntervalSeconds,
       })
     );
+    writeGithubIntervalCookie(settings.githubCheckIntervalSeconds);
   }
 
   function cloneQuay(quay) {
@@ -327,6 +374,7 @@
   function openSettings() {
     draftQuays = settings.quays.map(cloneQuay);
     els.elementsPerQuay.value = String(settings.elementsPerQuay);
+    els.githubCheckInterval.value = String(settings.githubCheckIntervalSeconds);
     els.stopSearch.value = "";
     els.searchResults.innerHTML = "";
     els.quayPick.hidden = true;
@@ -352,11 +400,16 @@
       2,
       Math.min(8, Number(els.elementsPerQuay.value) || 3)
     );
+    settings.githubCheckIntervalSeconds = normalizeGithubInterval(
+      els.githubCheckInterval.value
+    );
     settings.quays = draftQuays.map(cloneQuay);
     saveSettings();
     closeSettings();
-    updateBoardTitle();
-    refresh();
+    // Last siden på nytt slik at PHP leser cookie og kan hente ny kode
+    var url = new URL(window.location.href);
+    url.searchParams.set("forceGithub", "1");
+    window.location.replace(url.toString());
   }
 
   async function runSearch(text) {

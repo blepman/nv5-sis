@@ -13,8 +13,8 @@ Sanntidstavle vist på `https://nv5.haatetepe.no/sis/` (speilet fra denne `main`
 ## Holdeplasser og elementer
 
 - Standard: **Tveita T** kai `NSR:Quay:11309` (mot sentrum)
-- **Innstillinger** på siden: søk holdeplass, velg kai/retning, sett antall elementer
-- Valg lagres i `localStorage`
+- **Innstillinger** på siden: søk holdeplass, velg kai/retning, sett antall elementer, sett hvor ofte GitHub sjekkes
+- Valg lagres i `localStorage` (+ cookie for GitHub-intervall som PHP leser)
 - Standard **3 elementer** per quay:
   1. Neste avgang
   2. Avgang nr. 2

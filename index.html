@@ -68,6 +68,19 @@
           <small>Siste element viser de neste 3–4 avgangene</small>
         </label>
 
+        <label class="settings__field">
+          <span>Sjekk ny sidekode fra GitHub</span>
+          <select id="githubCheckInterval">
+            <option value="0">Ved hvert besøk</option>
+            <option value="60">Hvert minutt</option>
+            <option value="300" selected>Hvert 5. minutt</option>
+            <option value="900">Hvert 15. minutt</option>
+            <option value="1800">Hvert 30. minutt</option>
+            <option value="3600">Hver time</option>
+          </select>
+          <small>Styrer hvor ofte serveren henter oppdateringer fra main</small>
+        </label>
+
         <section class="settings__section">
           <h3>Valgte holdeplasser</h3>
           <ul class="settings__quays" id="selectedQuays"></ul>
