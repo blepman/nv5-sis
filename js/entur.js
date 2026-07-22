@@ -16,6 +16,7 @@
           }
           serviceJourney {
             line {
+              id
               publicCode
               name
               transportMode
@@ -47,7 +48,9 @@
           description
           publicCode
           lines {
+            id
             publicCode
+            name
             transportMode
           }
         }
@@ -187,7 +190,7 @@
       id: stop.id,
       name: stop.name,
       quays: (stop.quays || []).map(function (quay) {
-        const lines = quay.lines || [];
+        const lines = (quay.lines || []).map(normalizeLine);
         const modes = lines
           .map(function (line) {
             return line.transportMode;
@@ -200,10 +203,7 @@
           .map(function (line) {
             return line.publicCode;
           })
-          .filter(Boolean)
-          .filter(function (code, index, all) {
-            return all.indexOf(code) === index;
-          });
+          .filter(Boolean);
         return {
           id: quay.id,
           name: quay.name || stop.name,
@@ -211,8 +211,43 @@
           publicCode: quay.publicCode || "",
           modes: modes,
           lineCodes: lineCodes,
+          lines: lines,
         };
       }),
+    };
+  }
+
+  async function fetchQuayLines(config, quayId) {
+    const data = await graphql(
+      config,
+      `
+      query QuayLines($id: String!) {
+        quay(id: $id) {
+          id
+          lines {
+            id
+            publicCode
+            name
+            transportMode
+          }
+        }
+      }
+    `,
+      { id: quayId }
+    );
+    const quay = data && data.quay;
+    if (!quay) {
+      throw new Error("Fant ikke kai " + quayId);
+    }
+    return (quay.lines || []).map(normalizeLine);
+  }
+
+  function normalizeLine(line) {
+    return {
+      id: line.id,
+      publicCode: line.publicCode || "–",
+      name: line.name || "",
+      transportMode: line.transportMode || "",
     };
   }
 
@@ -242,6 +277,7 @@
     const presentation = line.presentation || {};
 
     return {
+      lineId: line.id || "",
       line: line.publicCode || "–",
       destination:
         (call.destinationDisplay && call.destinationDisplay.frontText) ||
@@ -262,5 +298,6 @@
     fetchDepartures: fetchDepartures,
     searchStops: searchStops,
     fetchStopQuays: fetchStopQuays,
+    fetchQuayLines: fetchQuayLines,
   };
 })(window);

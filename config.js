@@ -10,6 +10,9 @@ window.NV5_SIS = {
       id: "NSR:Quay:11309",
       name: "Tveita T",
       direction: "Mot sentrum",
+      // Tom lineIds = alle linjer. Ellers liste med line-id (f.eks. RUT:Line:2).
+      lineIds: [],
+      availableLines: [],
     },
   ],
   // Elementer per quay: N-1 enkeltavganger + siste element = neste 3–4 avganger

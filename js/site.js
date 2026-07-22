@@ -125,7 +125,63 @@
       id: quay.id,
       name: quay.name || quay.id,
       direction: quay.direction || quay.description || "",
+      lineIds: Array.isArray(quay.lineIds) ? quay.lineIds.slice() : [],
+      availableLines: Array.isArray(quay.availableLines)
+        ? quay.availableLines.map(function (line) {
+            return {
+              id: line.id,
+              publicCode: line.publicCode,
+              name: line.name || "",
+              transportMode: line.transportMode || "",
+            };
+          })
+        : [],
     };
+  }
+
+  function quayUsesLineFilter(quay) {
+    return (
+      Array.isArray(quay.lineIds) &&
+      quay.lineIds.length > 0 &&
+      (!quay.availableLines.length ||
+        quay.lineIds.length < quay.availableLines.length)
+    );
+  }
+
+  function filterDeparturesForQuay(departures, quay) {
+    if (!quayUsesLineFilter(quay)) {
+      return departures;
+    }
+    return departures.filter(function (dep) {
+      if (dep.lineId && quay.lineIds.indexOf(dep.lineId) !== -1) {
+        return true;
+      }
+      return quay.availableLines.some(function (line) {
+        return (
+          quay.lineIds.indexOf(line.id) !== -1 &&
+          line.publicCode === dep.line
+        );
+      });
+    });
+  }
+
+  async function ensureQuayLines(quay) {
+    if (quay.availableLines && quay.availableLines.length) {
+      return quay;
+    }
+    try {
+      var lines = await window.NV5Entur.fetchQuayLines(defaults, quay.id);
+      quay.availableLines = lines;
+      if (!quay.lineIds || !quay.lineIds.length) {
+        quay.lineIds = lines.map(function (line) {
+          return line.id;
+        });
+      }
+    } catch (error) {
+      console.warn("Kunne ikke hente linjer for", quay.id, error);
+      quay.availableLines = quay.availableLines || [];
+    }
+    return quay;
   }
 
   function pad(value) {
@@ -432,12 +488,21 @@
       var now = new Date();
       var needed = departuresNeeded();
       var results = await Promise.all(
-        settings.quays.map(function (quay) {
-          return window.NV5Entur.fetchDepartures(defaults, quay.id, needed).then(
-            function (result) {
-              return { quay: quay, result: result };
-            }
+        settings.quays.map(async function (quay) {
+          await ensureQuayLines(quay);
+          var fetchCount = quayUsesLineFilter(quay)
+            ? Math.max(needed * 3, 20)
+            : needed;
+          var result = await window.NV5Entur.fetchDepartures(
+            defaults,
+            quay.id,
+            fetchCount
           );
+          result.departures = filterDeparturesForQuay(
+            result.departures,
+            quay
+          ).slice(0, needed);
+          return { quay: quay, result: result };
         })
       );
 
@@ -481,8 +546,46 @@
     }
     els.selectedQuays.innerHTML = draftQuays
       .map(function (quay, index) {
+        var linesHtml = "";
+        if (quay.availableLines && quay.availableLines.length) {
+          linesHtml =
+            '<div class="settings__lines">' +
+            '<span class="settings__lines-label">Linjer (velg en eller flere)</span>' +
+            '<div class="settings__line-options">' +
+            quay.availableLines
+              .map(function (line) {
+                var checked =
+                  !quay.lineIds.length ||
+                  quay.lineIds.indexOf(line.id) !== -1;
+                var mode = MODE_LABELS[line.transportMode] || "";
+                return (
+                  '<label class="settings__line-option">' +
+                  '<input type="checkbox" data-quay-index="' +
+                  index +
+                  '" data-line-id="' +
+                  escapeHtml(line.id) +
+                  '"' +
+                  (checked ? " checked" : "") +
+                  "> " +
+                  "<span><strong>" +
+                  escapeHtml(line.publicCode) +
+                  "</strong>" +
+                  (mode ? " · " + escapeHtml(mode) : "") +
+                  (line.name
+                    ? '<em>' + escapeHtml(line.name) + "</em>"
+                    : "") +
+                  "</span></label>"
+                );
+              })
+              .join("") +
+            "</div></div>";
+        } else {
+          linesHtml =
+            '<p class="settings__hint">Henter linjer…</p>';
+        }
         return (
-          "<li>" +
+          '<li class="settings__quay-item">' +
+          '<div class="settings__quay-top">' +
           "<div><strong>" +
           escapeHtml(quay.name) +
           "</strong>" +
@@ -493,13 +596,15 @@
           '<button type="button" data-remove="' +
           index +
           '">Fjern</button>' +
+          "</div>" +
+          linesHtml +
           "</li>"
         );
       })
       .join("");
   }
 
-  function openSettings() {
+  async function openSettings() {
     draftQuays = settings.quays.map(cloneQuay);
     els.elementsPerQuay.value = String(settings.elementsPerQuay);
     els.githubCheckInterval.value = String(settings.githubCheckIntervalSeconds);
@@ -513,6 +618,8 @@
     } else {
       els.settingsDialog.setAttribute("open", "");
     }
+    await Promise.all(draftQuays.map(ensureQuayLines));
+    renderSelectedQuays();
   }
 
   function closeSettings() {
@@ -625,6 +732,8 @@
             escapeHtml(stop.name) +
             '" data-direction="' +
             escapeHtml(direction) +
+            '" data-lines="' +
+            escapeHtml(JSON.stringify(quay.lines || [])) +
             '">' +
             escapeHtml(label) +
             "</button>" +
@@ -640,14 +749,30 @@
     }
   }
 
-  function addQuay(quay) {
+  async function addQuay(quay) {
     var exists = draftQuays.some(function (item) {
       return item.id === quay.id;
     });
     if (exists) {
       return;
     }
-    draftQuays.push(cloneQuay(quay));
+    var next = cloneQuay(quay);
+    if (quay.lines && quay.lines.length) {
+      next.availableLines = quay.lines.map(function (line) {
+        return {
+          id: line.id,
+          publicCode: line.publicCode,
+          name: line.name || "",
+          transportMode: line.transportMode || "",
+        };
+      });
+      next.lineIds = next.availableLines.map(function (line) {
+        return line.id;
+      });
+    } else {
+      await ensureQuayLines(next);
+    }
+    draftQuays.push(next);
     renderSelectedQuays();
     els.quayPick.hidden = true;
     els.stopSearch.value = "";
@@ -667,6 +792,33 @@
       }
       draftQuays.splice(Number(btn.getAttribute("data-remove")), 1);
       renderSelectedQuays();
+    });
+
+    els.selectedQuays.addEventListener("change", function (event) {
+      var input = event.target.closest("input[data-line-id]");
+      if (!input) {
+        return;
+      }
+      var index = Number(input.getAttribute("data-quay-index"));
+      var quay = draftQuays[index];
+      if (!quay) {
+        return;
+      }
+      var selected = Array.prototype.slice
+        .call(
+          els.selectedQuays.querySelectorAll(
+            'input[data-quay-index="' + index + '"]:checked'
+          )
+        )
+        .map(function (el) {
+          return el.getAttribute("data-line-id");
+        });
+      // Tomt valg er upraktisk — behold minst den siste hukede om alt fjernes
+      if (!selected.length) {
+        input.checked = true;
+        selected = [input.getAttribute("data-line-id")];
+      }
+      quay.lineIds = selected;
     });
 
     els.stopSearch.addEventListener("input", function () {
@@ -689,10 +841,18 @@
       if (!btn) {
         return;
       }
+      var linesRaw = btn.getAttribute("data-lines") || "[]";
+      var lines = [];
+      try {
+        lines = JSON.parse(linesRaw);
+      } catch (error) {
+        lines = [];
+      }
       addQuay({
         id: btn.getAttribute("data-quay"),
         name: btn.getAttribute("data-name"),
         direction: btn.getAttribute("data-direction") || "",
+        lines: lines,
       });
     });
   }
