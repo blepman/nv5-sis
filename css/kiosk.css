@@ -185,8 +185,7 @@ body {
 }
 
 .departure--ticker {
-  min-height: 5.75rem;
-  align-items: stretch;
+  align-items: center;
 }
 
 .departure--cancelled {
@@ -195,26 +194,25 @@ body {
 
 .departure__ticker {
   position: relative;
-  align-self: stretch;
   width: 100%;
-  min-height: 4.75rem;
+  height: 2.75rem;
+  max-height: 2.75rem;
   overflow: hidden;
   display: block;
   text-align: right;
   /* Synlig rulleflate: tider fades litt før topp/bunn */
-  padding: 0.35rem 0;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 0.4rem,
-    #000 calc(100% - 0.4rem),
+    #000 0.35rem,
+    #000 calc(100% - 0.35rem),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 0.4rem,
-    #000 calc(100% - 0.4rem),
+    #000 0.35rem,
+    #000 calc(100% - 0.35rem),
     transparent 100%
   );
 }
@@ -223,15 +221,18 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.55rem;
+  gap: 0.45rem;
   will-change: transform;
 }
 
 .departure__ticker-item {
   position: static;
-  display: block;
-  flex: 0 0 auto;
-  line-height: 1.15;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 2.75rem;
+  height: 2.75rem;
+  line-height: 1;
   font-family: var(--mono);
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;

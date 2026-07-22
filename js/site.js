@@ -459,9 +459,9 @@
         var loopHeight = step * items.length;
         var viewHeight = slot.clientHeight;
 
-        // Start med første tid nær bunnen, så den ruller oppover
+        // Start med første tid litt under synlig flate, så den kommer inn fra bunnen
         if (!started && step > 0 && viewHeight > 0) {
-          offset = -Math.max(0, viewHeight - step - 6);
+          offset = -(viewHeight - 4);
           started = true;
         }
 
