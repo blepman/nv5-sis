@@ -3,8 +3,12 @@ declare(strict_types=1);
 
 /**
  * Speiler main-branchen fra GitHub og viser tavlen.
- * Ved hvert besøk: sjekk om main er ny, last ned ved behov, vis content/.
+ *
+ * Juster $githubCheckIntervalSeconds for hvor ofte GitHub sjekkes (sekunder).
+ * Standard: 300 = 5 minutter. Sett til 0 for å sjekke ved hvert besøk.
  */
+
+$githubCheckIntervalSeconds = 300;
 
 $owner = 'blepman';
 $repo = 'nv5-sis';
@@ -15,9 +19,13 @@ $root = __DIR__;
 $content = $root . '/content';
 $tmp = $root . '/content.tmp';
 $shaFile = $root . '/.last-sha';
+$checkFile = $root . '/.last-check';
 
 try {
-    sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
+    if (should_check_github($githubCheckIntervalSeconds, $content, $checkFile)) {
+        sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
+        file_put_contents($checkFile, (string) time());
+    }
     render($content);
 } catch (Throwable $e) {
     // Vis cached tavle hvis sync feiler
@@ -29,6 +37,21 @@ try {
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="nb"><meta charset="utf-8"><title>SIS</title>';
     echo '<h1>Tavlen er ikke klar</h1><p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
+}
+
+function should_check_github(int $intervalSeconds, string $content, string $checkFile): bool
+{
+    if (!is_file($content . '/index.html')) {
+        return true;
+    }
+    if ($intervalSeconds <= 0) {
+        return true;
+    }
+    if (!is_file($checkFile)) {
+        return true;
+    }
+    $age = time() - (int) filemtime($checkFile);
+    return $age >= $intervalSeconds;
 }
 
 function github_get(string $url, string $ua): string

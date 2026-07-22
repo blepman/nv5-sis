@@ -2,3 +2,4 @@ content/
 content.tmp/
 content.old/
 .last-sha
+.last-check
