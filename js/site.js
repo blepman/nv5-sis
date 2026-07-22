@@ -546,6 +546,15 @@
   }
 
   function start() {
+    // Hold cookie synket så PHP kjenner intervallet
+    writeGithubIntervalCookie(settings.githubCheckIntervalSeconds);
+    // Rydd bort forceGithub fra adresselinjen etter sync
+    if (new URL(window.location.href).searchParams.has("forceGithub")) {
+      var clean = new URL(window.location.href);
+      clean.searchParams.delete("forceGithub");
+      window.history.replaceState({}, "", clean.toString());
+    }
+
     updateBoardTitle();
     updateClock();
     setInterval(updateClock, 1000);
