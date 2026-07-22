@@ -1,0 +1,7 @@
+config.php
+content/
+content.tmp/
+content.old/
+.last-sha
+.sync.lock
+*.log

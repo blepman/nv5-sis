@@ -1,0 +1,30 @@
+DirectoryIndex index.php
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "^(config\.php|\.last-sha|\.sync\.lock|.*\.log)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^(config\.php|\.last-sha|\.sync\.lock|.*\.log)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+# Block direct access to lib PHP sources
+RedirectMatch 403 (?i)/lib/.*\.php$
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Serve cached main assets from /content/
+  RewriteRule ^content/ - [L]
+
+  # Everything else that is not a real file goes to the board
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L]
+</IfModule>
