@@ -1011,10 +1011,10 @@
   function start() {
     // Hold cookie synket så PHP kjenner intervallet
     writeGithubIntervalCookie(settings.githubCheckIntervalSeconds);
-    // Rydd bort forceGithub fra adresselinjen etter sync
-    if (new URL(window.location.href).searchParams.has("forceGithub")) {
+    // Rydd bort sync fra adresselinjen etter sync
+    if (new URL(window.location.href).searchParams.has("sync")) {
       var clean = new URL(window.location.href);
-      clean.searchParams.delete("forceGithub");
+      clean.searchParams.delete("sync");
       window.history.replaceState({}, "", clean.toString());
     }
 
