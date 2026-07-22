@@ -264,9 +264,14 @@
     }
     var first = departures[0];
     var items = departures.map(function (dep) {
+      var kind = dep.cancelled
+        ? "Innstilt"
+        : dep.realtime
+          ? "Sanntid"
+          : "Rutetid";
       return {
         time: formatDepartureLabel(dep, now),
-        kind: departureMeta(dep),
+        kind: kind,
         late: dep.delayMinutes >= 2 || dep.cancelled,
         now: formatDepartureLabel(dep, now) === "Nå",
       };
