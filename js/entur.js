@@ -88,15 +88,51 @@
     coach: "Buss",
   };
 
+  function modeLabel(mode) {
+    return MODE_LABELS[mode] || mode || "";
+  }
+
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    var controller =
+      typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = null;
+    var opts = Object.assign({}, options || {});
+    if (controller) {
+      opts.signal = controller.signal;
+    }
+    var timeout = timeoutMs || 10000;
+    try {
+      if (controller) {
+        timer = setTimeout(function () {
+          controller.abort();
+        }, timeout);
+      }
+      return await fetch(url, opts);
+    } catch (error) {
+      if (controller && error && error.name === "AbortError") {
+        throw new Error("Tidsavbrudd etter " + timeout + " ms");
+      }
+      throw error;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
   async function graphql(config, query, variables) {
-    const response = await fetch(config.enturUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "ET-Client-Name": config.clientName,
+    const response = await fetchWithTimeout(
+      config.enturUrl,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ET-Client-Name": config.clientName,
+        },
+        body: JSON.stringify({ query: query, variables: variables }),
       },
-      body: JSON.stringify({ query: query, variables: variables }),
-    });
+      config.fetchTimeoutMs
+    );
 
     if (!response.ok) {
       throw new Error("Entur svarte med HTTP " + response.status);
@@ -174,7 +210,7 @@
   function formatModes(modes) {
     return modes
       .map(function (mode) {
-        return MODE_LABELS[mode] || mode;
+        return modeLabel(mode);
       })
       .join(", ");
   }
@@ -184,10 +220,14 @@
       config.geocoderUrl +
       "?text=" +
       encodeURIComponent(text) +
-      "&lang=no&size=20&layers=venue";
-    const response = await fetch(url, {
-      headers: { "ET-Client-Name": config.clientName },
-    });
+      "&lang=no&size=12&layers=venue";
+    const response = await fetchWithTimeout(
+      url,
+      {
+        headers: { "ET-Client-Name": config.clientName },
+      },
+      config.fetchTimeoutMs
+    );
     if (!response.ok) {
       throw new Error("Geocoder HTTP " + response.status);
     }
@@ -365,5 +405,6 @@
     fetchStopQuays: fetchStopQuays,
     fetchQuayLines: fetchQuayLines,
     fetchPlaceLines: fetchPlaceLines,
+    modeLabel: modeLabel,
   };
 })(window);

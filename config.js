@@ -3,6 +3,7 @@ window.NV5_SIS = {
   enturUrl: "https://api.entur.io/journey-planner/v3/graphql",
   geocoderUrl: "https://api.entur.io/geocoder/v1/autocomplete",
   pollIntervalMs: 30000,
+  fetchTimeoutMs: 10000,
   pageReloadIntervalMs: 5 * 60 * 1000,
   // Default: Tveita T mot sentrum
   quays: [

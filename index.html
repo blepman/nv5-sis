@@ -6,17 +6,34 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
+    <meta
+      name="description"
+      content="NV5 SIS – sanntidsavganger for kollektivtrafikk på holdeplass."
+    />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NV5 SIS" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#0b1220" />
-    <title>NV5 SIS</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>NV5 SIS – sanntidsavganger</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="fonts/ibm-plex-sans-700-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
+    <link
+      rel="preload"
+      href="fonts/ibm-plex-sans-600-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="css/fonts.css" />
     <link rel="stylesheet" href="css/kiosk.css" />
   </head>
   <body>
@@ -31,7 +48,8 @@
             type="button"
             class="settings-btn"
             id="settingsOpen"
-            aria-label="Innstillinger"
+            aria-haspopup="dialog"
+            aria-controls="settingsDialog"
           >
             Innstillinger
           </button>
@@ -48,10 +66,14 @@
       </main>
     </div>
 
-    <dialog class="settings" id="settingsDialog">
+    <dialog
+      class="settings"
+      id="settingsDialog"
+      aria-labelledby="settingsTitle"
+    >
       <form method="dialog" class="settings__panel" id="settingsForm">
         <header class="settings__header">
-          <h2>Innstillinger</h2>
+          <h2 id="settingsTitle">Innstillinger</h2>
           <div class="settings__header-actions">
             <button type="button" class="settings__save" id="settingsSave">
               Lagre
@@ -86,13 +108,13 @@
           <small>Styrer hvor ofte serveren henter oppdateringer fra main</small>
         </label>
 
-        <section class="settings__section">
-          <h3>Valgte holdeplasser</h3>
+        <section class="settings__section" aria-labelledby="selectedQuaysTitle">
+          <h3 id="selectedQuaysTitle">Valgte holdeplasser</h3>
           <ul class="settings__quays" id="selectedQuays"></ul>
         </section>
 
-        <section class="settings__section">
-          <h3>Legg til holdeplass</h3>
+        <section class="settings__section" aria-labelledby="addStopTitle">
+          <h3 id="addStopTitle">Legg til holdeplass</h3>
           <p class="settings__hint">
             Velg «Alle retninger» eller én kai/retning, deretter linjer.
           </p>
@@ -114,8 +136,12 @@
       </form>
     </dialog>
 
-    <script src="config.js"></script>
-    <script src="js/entur.js"></script>
-    <script src="js/site.js"></script>
+    <noscript>
+      <p>NV5 SIS krever JavaScript for å vise sanntidsavganger.</p>
+    </noscript>
+
+    <script src="config.js" defer></script>
+    <script src="js/entur.js" defer></script>
+    <script src="js/site.js" defer></script>
   </body>
 </html>

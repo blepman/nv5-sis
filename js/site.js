@@ -30,15 +30,20 @@
   let searchTimer = null;
   let tickerStops = [];
   let draftQuays = settings.quays.slice();
+  let boardCache = {};
+  let refreshInFlight = false;
+  let tickersPaused = document.hidden;
+  let lastBoardSignature = "";
 
-  const MODE_LABELS = {
-    metro: "T-bane",
-    bus: "Buss",
-    tram: "Trikk",
-    rail: "Tog",
-    water: "Båt",
-    coach: "Buss",
-  };
+  function modeLabel(mode) {
+    return window.NV5Entur && typeof window.NV5Entur.modeLabel === "function"
+      ? window.NV5Entur.modeLabel(mode)
+      : mode || "";
+  }
+
+  function quayKey(quay) {
+    return (quay.kind === "stopPlace" ? "stopPlace" : "quay") + ":" + quay.id;
+  }
 
   function normalizeGithubInterval(value) {
     var seconds = Number(value);
@@ -63,13 +68,20 @@
   function writeGithubIntervalCookie(seconds) {
     var name = defaults.githubIntervalCookie || "nv5_github_interval";
     var maxAge = 60 * 60 * 24 * 365;
-    document.cookie =
+    var path = location.pathname.indexOf("/sis") === 0 ? "/sis/" : "/";
+    var cookie =
       name +
       "=" +
       encodeURIComponent(String(seconds)) +
-      "; path=/sis/; max-age=" +
+      "; path=" +
+      path +
+      "; max-age=" +
       maxAge +
       "; SameSite=Lax";
+    if (location.protocol === "https:") {
+      cookie += "; Secure";
+    }
+    document.cookie = cookie;
   }
 
   function loadSettings() {
@@ -256,7 +268,6 @@
   }
 
   function showStatus(message, isError) {
-    els.boards.innerHTML = "";
     els.status.hidden = false;
     els.status.textContent = message;
     els.status.classList.toggle("is-error", Boolean(isError));
@@ -286,7 +297,7 @@
     );
   }
 
-  function renderDepartureRow(departure, now, includeDirection) {
+  function renderDepartureRow(departure, now, includeDirection, animate) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
     var meta = departureMeta(departure, includeDirection);
@@ -297,6 +308,7 @@
     return (
       '<li class="departure' +
       (departure.cancelled ? " departure--cancelled" : "") +
+      (animate ? " departure--enter" : "") +
       '">' +
       '<span class="departure__line"' +
       lineStyleAttr(departure) +
@@ -322,7 +334,7 @@
     );
   }
 
-  function renderTickerElement(departures, now) {
+  function renderTickerElement(departures, now, animate) {
     if (!departures.length) {
       return "";
     }
@@ -351,7 +363,9 @@
       destinations.length === 1 ? destinations[0] : "Neste avganger";
 
     return (
-      '<li class="departure departure--ticker" data-ticker-items="' +
+      '<li class="departure departure--ticker' +
+      (animate ? " departure--enter" : "") +
+      '" data-ticker-items="' +
       escapeHtml(JSON.stringify(items)) +
       '">' +
       '<span class="departure__line"' +
@@ -385,116 +399,228 @@
     tickerStops = [];
   }
 
-  function startTickers() {
-    stopTickers();
-    var nodes = els.boards.querySelectorAll(".departure--ticker");
-    nodes.forEach(function (node) {
-      var raw = node.getAttribute("data-ticker-items") || "[]";
-      var items;
-      try {
-        items = JSON.parse(raw);
-      } catch (error) {
-        items = [];
-      }
-      if (!items.length) {
+  function startTickerOnNode(node) {
+    var raw = node.getAttribute("data-ticker-items") || "[]";
+    var items;
+    try {
+      items = JSON.parse(raw);
+    } catch (error) {
+      items = [];
+    }
+    if (!items.length) {
+      return;
+    }
+    var slot = node.querySelector(".departure__ticker");
+    var meta = node.querySelector("[data-ticker-meta]");
+    if (!slot) {
+      return;
+    }
+
+    var track = document.createElement("span");
+    track.className = "departure__ticker-track";
+    var sequence = items.concat(items);
+    sequence.forEach(function (item, index) {
+      var el = document.createElement("span");
+      el.className = "departure__ticker-item";
+      el.textContent = item.time;
+      el.setAttribute("data-item-index", String(index % items.length));
+      track.appendChild(el);
+    });
+    slot.innerHTML = "";
+    slot.appendChild(track);
+
+    var offset = 0;
+    var lastTs = 0;
+    var activeIndex = -1;
+    var rafId = 0;
+    var speedPxPerSec = 14;
+    var started = false;
+    var step = 0;
+    var viewHeight = 0;
+
+    function setActive(index) {
+      if (index === activeIndex || !items[index]) {
         return;
       }
-      var slot = node.querySelector(".departure__ticker");
-      var meta = node.querySelector("[data-ticker-meta]");
-      if (!slot) {
+      activeIndex = index;
+      var item = items[index];
+      if (meta) {
+        meta.textContent = item.kind;
+        meta.classList.toggle("is-late", Boolean(item.late));
+      }
+      slot.classList.toggle("is-now", Boolean(item.now));
+    }
+
+    // Steg = viewport-høyde, så neste tid kommer inn i bunnen
+    // i det forrige treffer toppgrensen.
+    function layoutTicker() {
+      var first = track.children[0];
+      viewHeight = slot.clientHeight;
+      if (!first || viewHeight <= 0) {
+        return false;
+      }
+      var itemHeight = first.getBoundingClientRect().height;
+      var gap = Math.max(4, viewHeight - itemHeight);
+      track.style.gap = gap + "px";
+      step = itemHeight + gap;
+      return step > 0;
+    }
+
+    function frame(ts) {
+      if (document.hidden || tickersPaused) {
+        lastTs = 0;
+        rafId = window.requestAnimationFrame(frame);
         return;
       }
 
-      var track = document.createElement("span");
-      track.className = "departure__ticker-track";
-      var sequence = items.concat(items);
-      sequence.forEach(function (item, index) {
-        var el = document.createElement("span");
-        el.className = "departure__ticker-item";
-        el.textContent = item.time;
-        el.setAttribute("data-item-index", String(index % items.length));
-        track.appendChild(el);
-      });
-      slot.innerHTML = "";
-      slot.appendChild(track);
+      if (!lastTs) {
+        lastTs = ts;
+      }
+      var dt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
 
-      var offset = 0;
-      var lastTs = 0;
-      var activeIndex = -1;
-      var rafId = 0;
-      var speedPxPerSec = 14;
-      var started = false;
-      var step = 0;
-      var viewHeight = 0;
-
-      function setActive(index) {
-        if (index === activeIndex || !items[index]) {
+      if (!started) {
+        if (!layoutTicker()) {
+          rafId = window.requestAnimationFrame(frame);
           return;
         }
-        activeIndex = index;
-        var item = items[index];
-        if (meta) {
-          meta.textContent = item.kind;
-          meta.classList.toggle("is-late", Boolean(item.late));
-        }
-        slot.classList.toggle("is-now", Boolean(item.now));
+        // Start med første tid rett under synlig flate
+        offset = -(viewHeight - 2);
+        started = true;
       }
 
-      // Steg = viewport-høyde, så neste tid kommer inn i bunnen
-      // i det forrige treffer toppgrensen.
-      function layoutTicker() {
-        var first = track.children[0];
-        viewHeight = slot.clientHeight;
-        if (!first || viewHeight <= 0) {
-          return false;
+      var loopHeight = step * items.length;
+      if (loopHeight > 0) {
+        offset += speedPxPerSec * dt;
+        while (offset >= loopHeight) {
+          offset -= loopHeight;
         }
-        var itemHeight = first.getBoundingClientRect().height;
-        var gap = Math.max(4, viewHeight - itemHeight);
-        track.style.gap = gap + "px";
-        step = itemHeight + gap;
-        return step > 0;
+        track.style.transform = "translate3d(0, " + -offset + "px, 0)";
+        var visual = offset < 0 ? 0 : offset;
+        setActive(Math.floor(visual / step) % items.length);
       }
 
-      function frame(ts) {
-        if (!lastTs) {
-          lastTs = ts;
-        }
-        var dt = Math.min(0.05, (ts - lastTs) / 1000);
-        lastTs = ts;
-
-        if (!started) {
-          if (!layoutTicker()) {
-            rafId = window.requestAnimationFrame(frame);
-            return;
-          }
-          // Start med første tid rett under synlig flate
-          offset = -(viewHeight - 2);
-          started = true;
-        }
-
-        var loopHeight = step * items.length;
-        if (loopHeight > 0) {
-          offset += speedPxPerSec * dt;
-          while (offset >= loopHeight) {
-            offset -= loopHeight;
-          }
-          track.style.transform = "translate3d(0, " + -offset + "px, 0)";
-          var visual = offset < 0 ? 0 : offset;
-          setActive(Math.floor(visual / step) % items.length);
-        }
-
-        rafId = window.requestAnimationFrame(frame);
-      }
-
-      setActive(0);
       rafId = window.requestAnimationFrame(frame);
-      tickerStops.push(function () {
-        window.cancelAnimationFrame(rafId);
-      });
+    }
+
+    setActive(0);
+    rafId = window.requestAnimationFrame(frame);
+    tickerStops.push(function () {
+      window.cancelAnimationFrame(rafId);
     });
   }
 
-  function renderQuayBoard(quayConfig, result, now) {
+  function startTickers() {
+    stopTickers();
+    var nodes = els.boards.querySelectorAll(".departure--ticker");
+    nodes.forEach(startTickerOnNode);
+  }
+
+  function syncStatusText(entry) {
+    if (entry.pending) {
+      return { text: "Oppdaterer…", state: "is-pending" };
+    }
+    if (entry.stale && entry.updatedAt) {
+      return {
+        text: "Ikke oppdatert · viser " + formatClock(entry.updatedAt, false),
+        state: "is-stale",
+      };
+    }
+    if (entry.error) {
+      var errMsg =
+        (entry.error && entry.error.message) || "Kunne ikke oppdatere";
+      return { text: errMsg, state: "is-error" };
+    }
+    if (entry.updatedAt) {
+      return {
+        text: "Oppdatert " + formatClock(entry.updatedAt, false),
+        state: "is-ok",
+      };
+    }
+    return { text: "Venter…", state: "is-pending" };
+  }
+
+  function boardSignature(entries) {
+    return entries
+      .map(function (entry) {
+        var deps =
+          (entry.result && entry.result.departures) || [];
+        var depSig = deps
+          .map(function (dep) {
+            return [
+              dep.lineId || "",
+              dep.line || "",
+              dep.destination || "",
+              dep.expected ? dep.expected.toISOString() : "",
+              dep.aimed ? dep.aimed.toISOString() : "",
+              dep.cancelled ? "1" : "0",
+              dep.realtime ? "1" : "0",
+              String(dep.delayMinutes || 0),
+              dep.quayDescription || "",
+            ].join(",");
+          })
+          .join(";");
+        return quayKey(entry.quay) + "#" + depSig;
+      })
+      .join("|");
+  }
+
+  function updateGlobalUpdated(entries) {
+    var latest = null;
+    var anyFresh = false;
+    var anyStale = false;
+    var anyError = false;
+    entries.forEach(function (entry) {
+      if (entry.updatedAt && (!latest || entry.updatedAt > latest)) {
+        latest = entry.updatedAt;
+      }
+      if (entry.stale) {
+        anyStale = true;
+      }
+      if (entry.error) {
+        anyError = true;
+      }
+      if (entry.updatedAt && !entry.stale && !entry.error) {
+        anyFresh = true;
+      }
+    });
+    if (!latest && anyError) {
+      els.updated.textContent = "Oppdatering feilet";
+      return;
+    }
+    if (!latest) {
+      els.updated.textContent = "Venter på data";
+      return;
+    }
+    if (anyStale || (anyError && anyFresh)) {
+      els.updated.textContent =
+        "Delvis oppdatert " + formatClock(latest, false);
+      return;
+    }
+    els.updated.textContent =
+      "Sist oppdatert " + formatClock(latest, false);
+  }
+
+  function patchSyncStatus(entries) {
+    var boards = els.boards.querySelectorAll(".quay-board");
+    entries.forEach(function (entry, index) {
+      var board = boards[index];
+      if (!board) {
+        return;
+      }
+      var syncEl = board.querySelector(".quay-board__sync");
+      if (!syncEl) {
+        return;
+      }
+      var status = syncStatusText(entry);
+      syncEl.textContent = status.text;
+      syncEl.className = "quay-board__sync " + status.state;
+    });
+  }
+
+  function renderQuayBoard(entry, now, animate) {
+    var quayConfig = entry.quay;
+    var result = entry.result || { name: quayConfig.name, departures: [] };
     var featuredCount = Math.max(0, settings.elementsPerQuay - 1);
     var compactCount = defaults.compactDepartures || 4;
     var deps = result.departures || [];
@@ -502,10 +628,14 @@
     var upcoming = deps.slice(featuredCount, featuredCount + compactCount);
     var direction = quayConfig.direction || result.description || "";
     var showDirectionOnRows = quayConfig.kind === "stopPlace";
+    var status = syncStatusText(entry);
 
     var html =
-      '<section class="quay-board">' +
+      '<section class="quay-board" data-quay-key="' +
+      escapeHtml(quayKey(quayConfig)) +
+      '">' +
       '<header class="quay-board__header">' +
+      '<div class="quay-board__titles">' +
       '<h2 class="quay-board__name">' +
       escapeHtml(quayConfig.name || result.name) +
       "</h2>";
@@ -515,7 +645,26 @@
         escapeHtml(direction) +
         "</p>";
     }
-    html += "</header>";
+    html +=
+      "</div>" +
+      '<p class="quay-board__sync ' +
+      status.state +
+      '">' +
+      escapeHtml(status.text) +
+      "</p>" +
+      "</header>";
+
+    if (entry.error && !deps.length) {
+      html +=
+        '<p class="quay-board__empty">' +
+        escapeHtml(
+          (entry.error && entry.error.message) ||
+            "Kunne ikke hente avganger."
+        ) +
+        "</p>";
+      html += "</section>";
+      return html;
+    }
 
     if (!deps.length) {
       html += '<p class="quay-board__empty">Ingen avganger akkurat nå.</p>';
@@ -525,10 +674,10 @@
 
     html += '<ul class="departures">';
     featured.forEach(function (dep) {
-      html += renderDepartureRow(dep, now, showDirectionOnRows);
+      html += renderDepartureRow(dep, now, showDirectionOnRows, animate);
     });
     if (upcoming.length && settings.elementsPerQuay >= 2) {
-      html += renderTickerElement(upcoming, now);
+      html += renderTickerElement(upcoming, now, animate);
     }
     html += "</ul>";
 
@@ -536,17 +685,46 @@
     return html;
   }
 
+  function renderBoards(entries, now) {
+    var signature = boardSignature(entries);
+    if (
+      signature === lastBoardSignature &&
+      els.boards.children.length === entries.length
+    ) {
+      patchSyncStatus(entries);
+      updateGlobalUpdated(entries);
+      return;
+    }
+
+    lastBoardSignature = signature;
+    stopTickers();
+    els.boards.innerHTML = entries
+      .map(function (entry) {
+        return renderQuayBoard(entry, now, true);
+      })
+      .join("");
+    startTickers();
+    updateGlobalUpdated(entries);
+  }
+
   async function refresh() {
+    if (refreshInFlight) {
+      return;
+    }
     if (!settings.quays.length) {
+      stopTickers();
+      els.boards.innerHTML = "";
+      boardCache = {};
+      lastBoardSignature = "";
       showStatus("Ingen holdeplasser valgt. Åpne innstillinger.", false);
       els.updated.textContent = "Mangler holdeplass";
       return;
     }
 
+    refreshInFlight = true;
     try {
-      var now = new Date();
       var needed = departuresNeeded();
-      var results = await Promise.all(
+      var settled = await Promise.allSettled(
         settings.quays.map(async function (quay) {
           await ensureQuayLines(quay);
           var fetchCount = quayUsesLineFilter(quay)
@@ -565,21 +743,75 @@
         })
       );
 
-      hideStatus();
+      var now = new Date();
+      var activeKeys = {};
+      var entries = settings.quays.map(function (quay, index) {
+        var key = quayKey(quay);
+        activeKeys[key] = true;
+        var outcome = settled[index];
+        var prev = boardCache[key];
+        if (outcome.status === "fulfilled") {
+          boardCache[key] = {
+            quay: quay,
+            result: outcome.value.result,
+            updatedAt: now,
+            error: null,
+            stale: false,
+            pending: false,
+          };
+        } else {
+          console.error(outcome.reason);
+          if (prev && prev.result) {
+            boardCache[key] = {
+              quay: quay,
+              result: prev.result,
+              updatedAt: prev.updatedAt,
+              error: outcome.reason,
+              stale: true,
+              pending: false,
+            };
+          } else {
+            boardCache[key] = {
+              quay: quay,
+              result: { name: quay.name, departures: [] },
+              updatedAt: null,
+              error: outcome.reason || new Error("Ukjent feil"),
+              stale: false,
+              pending: false,
+            };
+          }
+        }
+        return boardCache[key];
+      });
+
+      Object.keys(boardCache).forEach(function (key) {
+        if (!activeKeys[key]) {
+          delete boardCache[key];
+        }
+      });
+
+      var allFailed = entries.every(function (entry) {
+        return entry.error && (!entry.result || !entry.result.departures.length);
+      });
+      var anySuccess = entries.some(function (entry) {
+        return !entry.error;
+      });
+      var anyStale = entries.some(function (entry) {
+        return entry.stale;
+      });
+
+      if (allFailed && !anyStale) {
+        showStatus("Kunne ikke hente sanntidsdata. Prøver igjen…", true);
+      } else if (anyStale && !anySuccess) {
+        showStatus("Kunne ikke oppdatere. Viser forrige data…", true);
+      } else {
+        hideStatus();
+      }
+
       updateBoardTitle();
-      stopTickers();
-      els.boards.innerHTML = results
-        .map(function (item) {
-          return renderQuayBoard(item.quay, item.result, now);
-        })
-        .join("");
-      startTickers();
-      els.updated.textContent =
-        "Sist oppdatert " + formatClock(new Date(), false);
-    } catch (error) {
-      console.error(error);
-      showStatus("Kunne ikke hente sanntidsdata. Prøver igjen…", true);
-      els.updated.textContent = "Oppdatering feilet";
+      renderBoards(entries, now);
+    } finally {
+      refreshInFlight = false;
     }
   }
 
@@ -616,7 +848,7 @@
                 var checked =
                   !quay.lineIds.length ||
                   quay.lineIds.indexOf(line.id) !== -1;
-                var mode = MODE_LABELS[line.transportMode] || "";
+                var mode = modeLabel(line.transportMode);
                 return (
                   '<label class="settings__line-option">' +
                   '<input type="checkbox" data-quay-index="' +
@@ -690,6 +922,7 @@
   }
 
   function applySettings() {
+    var prevGithub = settings.githubCheckIntervalSeconds;
     settings.elementsPerQuay = Math.max(
       2,
       Math.min(8, Number(els.elementsPerQuay.value) || 3)
@@ -700,10 +933,16 @@
     settings.quays = draftQuays.map(cloneQuay);
     saveSettings();
     closeSettings();
-    // Last siden på nytt slik at PHP leser cookie og kan hente ny kode
-    var url = new URL(window.location.href);
-    url.searchParams.set("sync", "1");
-    window.location.replace(url.toString());
+    // Kun full sync/reload når GitHub-intervallet endres (PHP leser cookie)
+    if (settings.githubCheckIntervalSeconds !== prevGithub) {
+      var url = new URL(window.location.href);
+      url.searchParams.set("sync", "1");
+      window.location.replace(url.toString());
+      return;
+    }
+    boardCache = {};
+    lastBoardSignature = "";
+    refresh();
   }
 
   async function runSearch(text) {
@@ -762,11 +1001,11 @@
     var modes = quay.modes || [];
     var modeText = modes
       .map(function (mode) {
-        return MODE_LABELS[mode] || mode;
+        return modeLabel(mode);
       })
       .join(", ");
     if (!modeText && quay.lines && quay.lines.length) {
-      modeText = MODE_LABELS[quay.lines[0].transportMode] || "Kollektiv";
+      modeText = modeLabel(quay.lines[0].transportMode) || "Kollektiv";
     }
 
     var titleParts = [];
@@ -1033,6 +1272,7 @@
     }
 
     document.addEventListener("visibilitychange", function () {
+      tickersPaused = document.hidden;
       if (document.visibilityState === "visible") {
         refresh();
         requestWakeLock();

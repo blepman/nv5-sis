@@ -19,6 +19,8 @@ Sanntidstavle vist på `https://nv5.haatetepe.no/sis/` (speilet fra denne `main`
   1. Neste avgang
   2. Avgang nr. 2
   3. Neste 4 avganger som ticker i samme kortstil
+- Hver holdeplass viser egen oppdateringsstatus (**Oppdatert** / **Ikke oppdatert · viser …** / feil). Ved feil beholdes forrige data (stale) i stedet for blank tavle.
+- Endring av GitHub-sjekkintervall lagrer cookie og reloader med `?sync=1` slik at PHP kan hente ny kode. Andre innstillinger refresher tavlen uten full side-reload.
 
 ## Filer
 
