@@ -36,7 +36,7 @@ Gå til `http://localhost:8080`.
 3. Åpne snarveien (standalone)
 4. Valgfritt: **Guided Access** for å låse skjermen til appen
 
-Tavlen henter avganger ca. hvert 30. sekund og forsøker Screen Wake Lock der det støttes.
+Tavlen henter avganger ca. hvert 30. sekund, laster siden på nytt ca. hvert 5. minutt (for å plukke opp ny kode fra `main`), og forsøker Screen Wake Lock der det støttes.
 
 ## Utvikling
 

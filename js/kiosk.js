@@ -163,6 +163,12 @@
     refreshTimer = setInterval(refresh, config.pollIntervalMs);
     requestWakeLock();
 
+    if (config.pageReloadIntervalMs > 0) {
+      setTimeout(function () {
+        location.reload();
+      }, config.pageReloadIntervalMs);
+    }
+
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") {
         refresh();

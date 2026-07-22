@@ -5,5 +5,6 @@ window.NV5_SIS = {
   clientName: "haatetepe-nv5-sis",
   enturUrl: "https://api.entur.io/journey-planner/v3/graphql",
   pollIntervalMs: 30000,
+  pageReloadIntervalMs: 5 * 60 * 1000,
   numberOfDepartures: 8,
 };
