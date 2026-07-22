@@ -24,8 +24,13 @@
     return String(value).padStart(2, "0");
   }
 
-  function formatClock(date) {
-    return pad(date.getHours()) + ":" + pad(date.getMinutes());
+  function formatClock(date, withSeconds) {
+    var time =
+      pad(date.getHours()) + ":" + pad(date.getMinutes());
+    if (withSeconds) {
+      time += ":" + pad(date.getSeconds());
+    }
+    return time;
   }
 
   function formatDepartureLabel(departure, now) {
@@ -42,12 +47,12 @@
     if (minutes < 10) {
       return minutes + " min";
     }
-    return formatClock(departure.expected);
+    return formatClock(departure.expected, false);
   }
 
   function updateClock() {
     const now = new Date();
-    els.clock.textContent = formatClock(now);
+    els.clock.textContent = formatClock(now, true);
     els.clock.setAttribute("datetime", now.toISOString());
   }
 
@@ -129,7 +134,7 @@
       }
       renderDepartures(result.departures);
       els.updated.textContent =
-        "Sist oppdatert " + formatClock(new Date());
+        "Sist oppdatert " + formatClock(new Date(), false);
     } catch (error) {
       console.error(error);
       showStatus("Kunne ikke hente sanntidsdata. Prøver igjen…", true);
