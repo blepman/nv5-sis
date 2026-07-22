@@ -46,10 +46,23 @@
           name
           description
           publicCode
+          lines {
+            publicCode
+            transportMode
+          }
         }
       }
     }
   `;
+
+  const MODE_LABELS = {
+    metro: "T-bane",
+    bus: "Buss",
+    tram: "Trikk",
+    rail: "Tog",
+    water: "Båt",
+    coach: "Buss",
+  };
 
   async function graphql(config, query, variables) {
     const response = await fetch(config.enturUrl, {
@@ -91,12 +104,44 @@
     };
   }
 
+  function modesFromCategories(categories) {
+    const modes = [];
+    (categories || []).forEach(function (cat) {
+      if (cat === "metroStation" || cat === "metro") {
+        modes.push("metro");
+      } else if (
+        cat === "onstreetBus" ||
+        cat === "busStation" ||
+        cat === "bus"
+      ) {
+        modes.push("bus");
+      } else if (cat === "onstreetTram" || cat === "tramStation") {
+        modes.push("tram");
+      } else if (cat === "railStation") {
+        modes.push("rail");
+      } else if (cat === "ferryStop" || cat === "harbourPort") {
+        modes.push("water");
+      }
+    });
+    return modes.filter(function (mode, index, all) {
+      return all.indexOf(mode) === index;
+    });
+  }
+
+  function formatModes(modes) {
+    return modes
+      .map(function (mode) {
+        return MODE_LABELS[mode] || mode;
+      })
+      .join(", ");
+  }
+
   async function searchStops(config, text) {
     const url =
       config.geocoderUrl +
       "?text=" +
       encodeURIComponent(text) +
-      "&lang=no&size=8&layers=venue";
+      "&lang=no&size=20&layers=venue";
     const response = await fetch(url, {
       headers: { "ET-Client-Name": config.clientName },
     });
@@ -107,11 +152,24 @@
     return (payload.features || [])
       .map(function (feature) {
         const p = feature.properties || {};
+        const modes = modesFromCategories(p.category);
+        const locality = p.locality || p.county || "";
+        const modeText = formatModes(modes);
+        const baseName = p.name || p.label || p.id;
+        const labelParts = [baseName];
+        if (modeText) {
+          labelParts[0] = baseName + " (" + modeText + ")";
+        }
+        if (locality) {
+          labelParts.push(locality);
+        }
         return {
           id: p.id,
-          name: p.name || p.label || p.id,
-          label: p.label || p.name || p.id,
+          name: baseName,
+          label: labelParts.join(" · "),
           category: p.category || [],
+          modes: modes,
+          locality: locality,
         };
       })
       .filter(function (item) {
@@ -129,11 +187,30 @@
       id: stop.id,
       name: stop.name,
       quays: (stop.quays || []).map(function (quay) {
+        const lines = quay.lines || [];
+        const modes = lines
+          .map(function (line) {
+            return line.transportMode;
+          })
+          .filter(Boolean)
+          .filter(function (mode, index, all) {
+            return all.indexOf(mode) === index;
+          });
+        const lineCodes = lines
+          .map(function (line) {
+            return line.publicCode;
+          })
+          .filter(Boolean)
+          .filter(function (code, index, all) {
+            return all.indexOf(code) === index;
+          });
         return {
           id: quay.id,
           name: quay.name || stop.name,
           description: quay.description || "",
           publicCode: quay.publicCode || "",
+          modes: modes,
+          lineCodes: lineCodes,
         };
       }),
     };

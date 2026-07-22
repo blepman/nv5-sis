@@ -18,7 +18,7 @@ Sanntidstavle vist på `https://nv5.haatetepe.no/sis/` (speilet fra denne `main`
 - Standard **3 elementer** per quay:
   1. Neste avgang
   2. Avgang nr. 2
-  3. Neste 3–4 avganger (kompakt, med linje/destinasjon/tid)
+  3. Nestes 4 avganger som ticker i samme kortstil
 
 ## Filer
 

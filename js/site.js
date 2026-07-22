@@ -28,7 +28,17 @@
   let wakeLock = null;
   let refreshTimer = null;
   let searchTimer = null;
+  let tickerTimers = [];
   let draftQuays = settings.quays.slice();
+
+  const MODE_LABELS = {
+    metro: "T-bane",
+    bus: "Buss",
+    tram: "Trikk",
+    rail: "Tog",
+    water: "Båt",
+    coach: "Buss",
+  };
 
   function normalizeGithubInterval(value) {
     var seconds = Number(value);
@@ -199,30 +209,33 @@
     return featured + (defaults.compactDepartures || 4);
   }
 
-  function renderDepartureRow(departure, now, compact) {
+  function lineStyleAttr(departure) {
+    if (!departure.colour) {
+      return "";
+    }
+    return (
+      ' style="background:' +
+      escapeHtml(departure.colour) +
+      ";color:" +
+      escapeHtml(departure.textColour || "#fff") +
+      '"'
+    );
+  }
+
+  function renderDepartureRow(departure, now) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
     var meta = departureMeta(departure);
     if (departure.situations[0]) {
       meta += " · " + departure.situations[0];
     }
-    var lineStyle = "";
-    if (departure.colour) {
-      lineStyle =
-        ' style="background:' +
-        escapeHtml(departure.colour) +
-        ";color:" +
-        escapeHtml(departure.textColour || "#fff") +
-        '"';
-    }
 
     return (
       '<li class="departure' +
-      (compact ? " departure--compact" : "") +
       (departure.cancelled ? " departure--cancelled" : "") +
       '">' +
       '<span class="departure__line"' +
-      lineStyle +
+      lineStyleAttr(departure) +
       ">" +
       escapeHtml(departure.line) +
       "</span>" +
@@ -245,14 +258,95 @@
     );
   }
 
+  function renderTickerElement(departures, now) {
+    if (!departures.length) {
+      return "";
+    }
+    var first = departures[0];
+    var times = departures.map(function (dep) {
+      return formatDepartureLabel(dep, now);
+    });
+    var destinations = departures
+      .map(function (dep) {
+        return dep.destination;
+      })
+      .filter(function (dest, index, all) {
+        return all.indexOf(dest) === index;
+      });
+    var destinationLabel =
+      destinations.length === 1 ? destinations[0] : "Neste avganger";
+    var meta = "Ticker · " + times.length + " avganger";
+
+    return (
+      '<li class="departure departure--ticker" data-ticker-times="' +
+      escapeHtml(JSON.stringify(times)) +
+      '">' +
+      '<span class="departure__line"' +
+      lineStyleAttr(first) +
+      ">" +
+      escapeHtml(first.line) +
+      "</span>" +
+      '<div class="departure__dest-wrap">' +
+      '<div class="departure__destination">' +
+      escapeHtml(destinationLabel) +
+      "</div>" +
+      '<div class="departure__meta">' +
+      escapeHtml(meta) +
+      "</div>" +
+      "</div>" +
+      '<span class="departure__time departure__ticker" aria-live="off">' +
+      '<span class="departure__ticker-item is-active">' +
+      escapeHtml(times[0]) +
+      "</span>" +
+      "</span>" +
+      "</li>"
+    );
+  }
+
+  function stopTickers() {
+    tickerTimers.forEach(function (id) {
+      clearInterval(id);
+    });
+    tickerTimers = [];
+  }
+
+  function startTickers() {
+    stopTickers();
+    var nodes = els.boards.querySelectorAll(".departure--ticker");
+    nodes.forEach(function (node) {
+      var raw = node.getAttribute("data-ticker-times") || "[]";
+      var times;
+      try {
+        times = JSON.parse(raw);
+      } catch (error) {
+        times = [];
+      }
+      if (!times.length) {
+        return;
+      }
+      var slot = node.querySelector(".departure__ticker");
+      if (!slot) {
+        return;
+      }
+      var index = 0;
+      var timer = setInterval(function () {
+        index = (index + 1) % times.length;
+        slot.innerHTML =
+          '<span class="departure__ticker-item is-active">' +
+          escapeHtml(times[index]) +
+          "</span>";
+      }, 2500);
+      tickerTimers.push(timer);
+    });
+  }
+
   function renderQuayBoard(quayConfig, result, now) {
     var featuredCount = Math.max(0, settings.elementsPerQuay - 1);
     var compactCount = defaults.compactDepartures || 4;
     var deps = result.departures || [];
     var featured = deps.slice(0, featuredCount);
-    var compact = deps.slice(featuredCount, featuredCount + compactCount);
-    var direction =
-      quayConfig.direction || result.description || "";
+    var upcoming = deps.slice(featuredCount, featuredCount + compactCount);
+    var direction = quayConfig.direction || result.description || "";
 
     var html =
       '<section class="quay-board">' +
@@ -276,20 +370,12 @@
 
     html += '<ul class="departures">';
     featured.forEach(function (dep) {
-      html += renderDepartureRow(dep, now, false);
+      html += renderDepartureRow(dep, now);
     });
-    html += "</ul>";
-
-    if (compact.length && settings.elementsPerQuay >= 2) {
-      html +=
-        '<div class="quay-board__more">' +
-        '<p class="quay-board__more-label">Neste avganger</p>' +
-        '<ul class="departures departures--compact">';
-      compact.forEach(function (dep) {
-        html += renderDepartureRow(dep, now, true);
-      });
-      html += "</ul></div>";
+    if (upcoming.length && settings.elementsPerQuay >= 2) {
+      html += renderTickerElement(upcoming, now);
     }
+    html += "</ul>";
 
     html += "</section>";
     return html;
@@ -317,11 +403,13 @@
 
       hideStatus();
       updateBoardTitle();
+      stopTickers();
       els.boards.innerHTML = results
         .map(function (item) {
           return renderQuayBoard(item.quay, item.result, now);
         })
         .join("");
+      startTickers();
       els.updated.textContent =
         "Sist oppdatert " + formatClock(new Date(), false);
     } catch (error) {
@@ -462,9 +550,33 @@
       }
       els.quayResults.innerHTML = stop.quays
         .map(function (quay) {
-          var label =
-            (quay.description || quay.name || "Kai") +
-            (quay.publicCode ? " (" + quay.publicCode + ")" : "");
+          var modeText = (quay.modes || [])
+            .map(function (mode) {
+              return MODE_LABELS[mode] || mode;
+            })
+            .join(", ");
+          var parts = [];
+          if (modeText) {
+            parts.push(modeText);
+          }
+          if (quay.description) {
+            parts.push(quay.description);
+          } else if (quay.publicCode) {
+            parts.push("Plattform " + quay.publicCode);
+          } else {
+            parts.push(quay.name || "Kai");
+          }
+          if (quay.publicCode && quay.description) {
+            parts.push("(" + quay.publicCode + ")");
+          }
+          if (quay.lineCodes && quay.lineCodes.length) {
+            parts.push("linje " + quay.lineCodes.join(", "));
+          }
+          var label = parts.join(" · ");
+          var direction =
+            quay.description ||
+            (modeText ? modeText : "") ||
+            (quay.publicCode ? "Plattform " + quay.publicCode : "");
           return (
             "<li>" +
             '<button type="button" data-quay="' +
@@ -472,7 +584,7 @@
             '" data-name="' +
             escapeHtml(stop.name) +
             '" data-direction="' +
-            escapeHtml(quay.description || "") +
+            escapeHtml(direction) +
             '">' +
             escapeHtml(label) +
             "</button>" +
