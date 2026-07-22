@@ -424,6 +424,8 @@
       var rafId = 0;
       var speedPxPerSec = 14;
       var started = false;
+      var step = 0;
+      var viewHeight = 0;
 
       function setActive(index) {
         if (index === activeIndex || !items[index]) {
@@ -438,14 +440,19 @@
         slot.classList.toggle("is-now", Boolean(item.now));
       }
 
-      function measureStep() {
+      // Steg = viewport-høyde, så neste tid kommer inn i bunnen
+      // i det forrige treffer toppgrensen.
+      function layoutTicker() {
         var first = track.children[0];
-        if (!first) {
-          return 28;
+        viewHeight = slot.clientHeight;
+        if (!first || viewHeight <= 0) {
+          return false;
         }
-        var styles = window.getComputedStyle(track);
-        var gap = parseFloat(styles.rowGap || styles.gap || "0") || 0;
-        return first.getBoundingClientRect().height + gap;
+        var itemHeight = first.getBoundingClientRect().height;
+        var gap = Math.max(4, viewHeight - itemHeight);
+        track.style.gap = gap + "px";
+        step = itemHeight + gap;
+        return step > 0;
       }
 
       function frame(ts) {
@@ -455,16 +462,17 @@
         var dt = Math.min(0.05, (ts - lastTs) / 1000);
         lastTs = ts;
 
-        var step = measureStep();
-        var loopHeight = step * items.length;
-        var viewHeight = slot.clientHeight;
-
-        // Start med første tid litt under synlig flate, så den kommer inn fra bunnen
-        if (!started && step > 0 && viewHeight > 0) {
-          offset = -(viewHeight - 4);
+        if (!started) {
+          if (!layoutTicker()) {
+            rafId = window.requestAnimationFrame(frame);
+            return;
+          }
+          // Start med første tid rett under synlig flate
+          offset = -(viewHeight - 2);
           started = true;
         }
 
+        var loopHeight = step * items.length;
         if (loopHeight > 0) {
           offset += speedPxPerSec * dt;
           while (offset >= loopHeight) {
