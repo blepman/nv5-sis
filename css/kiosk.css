@@ -381,12 +381,12 @@ body {
   font-family: var(--mono);
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .departure__ticker-item--with-line {
   font-size: clamp(1.05rem, 4.2vw, 1.4rem);
   letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
 }
 
 .departure__line {
