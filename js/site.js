@@ -390,42 +390,61 @@
       return "";
     }
     var first = departures[0];
-    var items = departures.map(function (dep) {
-      var kind = dep.cancelled
-        ? "Innstilt"
-        : dep.realtime
-          ? "Sanntid"
-          : "Rutetid";
-      return {
-        time: formatDepartureLabel(dep, now),
-        kind: kind,
-        late: dep.delayMinutes >= 2 || dep.cancelled,
-        now: formatDepartureLabel(dep, now) === "Nå",
-      };
-    });
-    var destinations = departures
+    var uniqueLines = departures
+      .map(function (dep) {
+        return dep.line || "";
+      })
+      .filter(function (line, index, all) {
+        return line && all.indexOf(line) === index;
+      });
+    var multiLine = uniqueLines.length > 1;
+    var uniqueDestinations = departures
       .map(function (dep) {
         return dep.destination;
       })
       .filter(function (dest, index, all) {
         return all.indexOf(dest) === index;
       });
-    var destinationLabel =
-      destinations.length === 1 ? destinations[0] : "Neste avganger";
+    var multiDestination = uniqueDestinations.length > 1;
+    var items = departures.map(function (dep) {
+      var kind = dep.cancelled
+        ? "Innstilt"
+        : dep.realtime
+          ? "Sanntid"
+          : "Rutetid";
+      var time = formatDepartureLabel(dep, now);
+      return {
+        time: time,
+        line: dep.line || "–",
+        colour: dep.colour || "",
+        textColour: dep.textColour || "",
+        destination: dep.destination || "",
+        kind: kind,
+        late: dep.delayMinutes >= 2 || dep.cancelled,
+        now: time === "Nå",
+        label: multiLine ? (dep.line || "–") + " · " + time : time,
+      };
+    });
+    var destinationLabel = multiDestination
+      ? first.destination || "Neste avganger"
+      : uniqueDestinations[0] || "Neste avganger";
 
     return (
       '<li class="departure departure--ticker' +
+      (multiLine ? " departure--ticker-multiline" : "") +
       (animate ? " departure--enter" : "") +
       '" data-ticker-items="' +
       escapeHtml(JSON.stringify(items)) +
+      '" data-ticker-multidest="' +
+      (multiDestination ? "1" : "0") +
       '">' +
-      '<span class="departure__line"' +
+      '<span class="departure__line" data-ticker-line' +
       lineStyleAttr(first) +
       ">" +
       escapeHtml(first.line) +
       "</span>" +
       '<div class="departure__dest-wrap">' +
-      '<div class="departure__destination">' +
+      '<div class="departure__destination" data-ticker-destination>' +
       escapeHtml(destinationLabel) +
       "</div>" +
       '<div class="departure__meta' +
@@ -463,6 +482,9 @@
     }
     var slot = node.querySelector(".departure__ticker");
     var meta = node.querySelector("[data-ticker-meta]");
+    var lineEl = node.querySelector("[data-ticker-line]");
+    var destEl = node.querySelector("[data-ticker-destination]");
+    var multiDestination = node.getAttribute("data-ticker-multidest") === "1";
     if (!slot) {
       return;
     }
@@ -473,7 +495,10 @@
     sequence.forEach(function (item, index) {
       var el = document.createElement("span");
       el.className = "departure__ticker-item";
-      el.textContent = item.time;
+      if (item.line && item.label && item.label !== item.time) {
+        el.className += " departure__ticker-item--with-line";
+      }
+      el.textContent = item.label || item.time;
       el.setAttribute("data-item-index", String(index % items.length));
       track.appendChild(el);
     });
@@ -498,6 +523,19 @@
       if (meta) {
         meta.textContent = item.kind;
         meta.classList.toggle("is-late", Boolean(item.late));
+      }
+      if (lineEl && item.line) {
+        lineEl.textContent = item.line;
+        if (item.colour) {
+          lineEl.style.background = item.colour;
+          lineEl.style.color = item.textColour || "#fff";
+        } else {
+          lineEl.style.background = "";
+          lineEl.style.color = "";
+        }
+      }
+      if (destEl && multiDestination && item.destination) {
+        destEl.textContent = item.destination;
       }
       slot.classList.toggle("is-now", Boolean(item.now));
     }
