@@ -324,14 +324,10 @@ body {
 
 .departure {
   --departure-status: var(--warn);
+  --departure-stack-gap: 0.25rem;
   display: grid;
-  grid-template-columns:
-    var(--departure-status-width)
-    var(--departure-line-size)
-    minmax(0, 1fr);
-  grid-template-rows: auto;
+  grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.5rem;
-  row-gap: 0.35rem;
   align-items: start;
   padding: 0.7rem 0.4rem 0.7rem 0.35rem;
   background: color-mix(in srgb, var(--bg-lift) 88%, transparent);
@@ -351,52 +347,53 @@ body {
   --departure-status: var(--late);
 }
 
-.departure::before {
-  content: "";
-  grid-column: 1;
-  grid-row: 1 / -1;
-  width: var(--departure-status-width);
-  border-radius: 999px;
-  background: var(--departure-status);
-  align-self: stretch;
-  justify-self: center;
-}
-
-.departure--has-situation {
-  grid-template-rows: auto auto;
-}
-
 .departure--enter {
   animation: row-in 0.45s ease both;
 }
 
-.departure--ticker {
-  align-items: start;
-}
-
-/* Venstre skinne: linjenummer + ev. avviksikon tett under */
-.departure__rail {
-  grid-column: 2;
-  grid-row: 1 / -1;
+/* Statusstrek + linje/avvik: høyde styres av badge-stacken, ikke avvikstekst */
+.departure__aside {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: stretch;
   gap: 0.35rem;
   min-width: 0;
+}
+
+.departure__status {
+  flex: 0 0 var(--departure-status-width);
+  width: var(--departure-status-width);
+  border-radius: 999px;
+  background: var(--departure-status);
+  align-self: stretch;
+}
+
+.departure__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--departure-stack-gap);
+  width: var(--departure-line-size);
+  min-width: var(--departure-line-size);
 }
 
 .departure__line-wrap {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.departure__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--departure-stack-gap);
   min-width: 0;
 }
 
 /* Øvre sone: dest-innhold + tid midtstilt mot hverandre */
 .departure__main {
-  grid-column: 3;
-  grid-row: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 0.5rem;
@@ -505,20 +502,23 @@ body {
 }
 
 .departure__line {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: var(--departure-line-size);
+  width: 100%;
   min-width: var(--departure-line-size);
   height: var(--departure-line-size);
-  padding: 0 0.2rem;
+  min-height: var(--departure-line-size);
+  padding: 0.15rem;
   border-radius: 0.3rem;
   background: var(--metro);
   color: #fff;
   font-family: var(--mono);
   font-size: 1.35rem;
   font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .departure__destination {
@@ -560,22 +560,22 @@ body {
 }
 
 .departure__situation {
-  grid-column: 3;
-  grid-row: 2;
+  display: flex;
+  align-items: center;
   min-width: 0;
-  align-self: start;
-  padding-top: 0.15rem;
 }
 
 .departure__situation-icon {
   box-sizing: border-box;
   flex: 0 0 auto;
-  width: var(--departure-line-size);
+  width: 100%;
+  min-width: var(--departure-line-size);
   height: var(--departure-line-size);
+  min-height: var(--departure-line-size);
   border-radius: 0.3rem;
   background: #f0c674;
   color: #111;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
 }

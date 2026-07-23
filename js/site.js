@@ -584,6 +584,47 @@
     );
   }
 
+  function syncDepartureBadges(root) {
+    var scope = root || els.boards;
+    if (!scope) {
+      return;
+    }
+    scope.querySelectorAll(".departure").forEach(function (row) {
+      var main = row.querySelector(".departure__main");
+      var line = row.querySelector(".departure__line");
+      var warn = row.querySelector(".departure__situation-icon");
+      var situation = row.querySelector(".departure__situation");
+      if (!main || !line) {
+        return;
+      }
+      line.style.height = "";
+      line.style.minHeight = "";
+      if (warn) {
+        warn.style.height = "";
+        warn.style.minHeight = "";
+        warn.style.width = "";
+      }
+      if (situation) {
+        situation.style.minHeight = "";
+      }
+      var h = Math.round(main.getBoundingClientRect().height);
+      if (h < 1) {
+        return;
+      }
+      line.style.height = h + "px";
+      line.style.minHeight = h + "px";
+      if (warn) {
+        var w = Math.round(line.getBoundingClientRect().width) || h;
+        warn.style.height = h + "px";
+        warn.style.minHeight = h + "px";
+        warn.style.width = w + "px";
+      }
+      if (situation) {
+        situation.style.minHeight = h + "px";
+      }
+    });
+  }
+
   function patchSituations(now) {
     var nodes = els.boards.querySelectorAll(
       ".departure__situation[data-situations]"
@@ -689,10 +730,14 @@
       (hasSituation ? " departure--has-situation" : "") +
       (animate ? " departure--enter" : "") +
       '">' +
-      '<div class="departure__rail">' +
+      '<div class="departure__aside">' +
+      '<span class="departure__status" aria-hidden="true"></span>' +
+      '<div class="departure__badges">' +
       renderLineBadge(departure) +
       (hasSituation ? renderSituationIconHtml() : "") +
       "</div>" +
+      "</div>" +
+      '<div class="departure__body">' +
       '<div class="departure__main">' +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination">' +
@@ -711,6 +756,7 @@
       renderTimeBlock(timeLabel, delayClass, isNow, delayLabel) +
       "</div>" +
       renderSituationHtml(departure, now) +
+      "</div>" +
       "</li>"
     );
   }
@@ -767,9 +813,13 @@
       '" data-ticker-sync-dest="' +
       (multiLine || multiDestination ? "1" : "0") +
       '">' +
-      '<div class="departure__rail">' +
+      '<div class="departure__aside">' +
+      '<span class="departure__status" aria-hidden="true"></span>' +
+      '<div class="departure__badges">' +
       renderLineBadge(first, "data-ticker-line-wrap") +
       "</div>" +
+      "</div>" +
+      '<div class="departure__body">' +
       '<div class="departure__main">' +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination" data-ticker-destination>' +
@@ -778,6 +828,7 @@
       "</div>" +
       '<div class="departure__time-wrap">' +
       '<span class="departure__ticker" aria-live="off"></span>' +
+      "</div>" +
       "</div>" +
       "</div>" +
       "</li>"
@@ -1155,6 +1206,9 @@
       })
       .join("");
     startTickers();
+    requestAnimationFrame(function () {
+      syncDepartureBadges();
+    });
   }
 
   async function refresh() {
@@ -1816,6 +1870,13 @@
     bindSettings();
     refresh();
     refreshTimer = setInterval(refresh, defaults.pollIntervalMs);
+    var badgeResizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(badgeResizeTimer);
+      badgeResizeTimer = setTimeout(function () {
+        syncDepartureBadges();
+      }, 120);
+    });
     requestWakeLock();
 
     if (defaults.pageReloadIntervalMs > 0) {
