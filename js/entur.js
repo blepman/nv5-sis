@@ -1,4 +1,14 @@
 (function (global) {
+  const CALL_PROGRESS_FIELDS = `
+    quay {
+      name
+    }
+    expectedArrivalTime
+    expectedDepartureTime
+    actualArrivalTime
+    actualDepartureTime
+  `;
+
   const CALL_FIELDS = `
     expectedDepartureTime
     aimedDepartureTime
@@ -10,6 +20,7 @@
     }
     quay {
       id
+      name
       description
       publicCode
     }
@@ -26,27 +37,18 @@
         }
       }
     }
+    serviceJourneyEstimatedCalls {
+      first {
+        ${CALL_PROGRESS_FIELDS}
+      }
+      previous {
+        ${CALL_PROGRESS_FIELDS}
+      }
+    }
     situations {
       summary {
         language
         value
-      }
-    }
-  `;
-
-  const JOURNEY_PROGRESS_QUERY = `
-    query JourneyProgress($id: String!) {
-      serviceJourney(id: $id) {
-        id
-        estimatedCalls {
-          actualArrivalTime
-          actualDepartureTime
-          stopPositionInPattern
-          quay {
-            id
-            name
-          }
-        }
       }
     }
   `;
@@ -64,8 +66,10 @@
   const SERVICE_RUN_PATTERN =
     /tjenest|ikke i trafikk|tomkj|depot|garasje/;
 
-  const progressCache = {};
-  const PROGRESS_CACHE_MS = 25000;
+  // Vis rutebasert posisjon fra litt før første stopp, og for avganger
+  // som er nærmere enn dette (selv før start).
+  const PROGRESS_LEAD_MS = 60 * 1000;
+  const PROGRESS_UPCOMING_MS = 25 * 60 * 1000;
 
   const QUAY_QUERY = `
     query QuayDepartures($id: String!, $numberOfDepartures: Int!) {
@@ -141,101 +145,163 @@
     return SERVICE_RUN_PATTERN.test(String(destination || "").toLowerCase());
   }
 
-  function deriveJourneyProgress(calls) {
-    if (!calls || !calls.length) {
+  function parseTime(value) {
+    if (!value) {
       return null;
     }
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : value;
+    }
+    var date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  function normalizeProgressCall(call) {
+    if (!call) {
+      return null;
+    }
+    var name = (call.quay && call.quay.name) || call.name || "";
+    if (!name) {
+      return null;
+    }
+    return {
+      name: name,
+      expectedArrival: parseTime(call.expectedArrivalTime || call.expectedArrival),
+      expectedDeparture: parseTime(
+        call.expectedDepartureTime || call.expectedDeparture
+      ),
+      actualArrival: parseTime(call.actualArrivalTime || call.actualArrival),
+      actualDeparture: parseTime(call.actualDepartureTime || call.actualDeparture),
+    };
+  }
+
+  function progressFromActual(stops, boardStopName) {
     var idx = -1;
-    for (var i = 0; i < calls.length; i++) {
-      if (calls[i].actualArrivalTime || calls[i].actualDepartureTime) {
+    for (var i = 0; i < stops.length; i++) {
+      if (stops[i].actualArrival || stops[i].actualDeparture) {
         idx = i;
       }
     }
     if (idx < 0) {
       return null;
     }
-    var call = calls[idx];
-    var stopName = (call.quay && call.quay.name) || "";
-    if (!stopName) {
-      return null;
-    }
-    if (call.actualDepartureTime) {
-      var next = calls[idx + 1];
-      var nextName = (next && next.quay && next.quay.name) || "";
+    var stop = stops[idx];
+    if (stop.actualDeparture) {
+      var next = stops[idx + 1];
+      var nextName = (next && next.name) || boardStopName || "";
       if (nextName) {
-        return {
-          state: "towards",
-          stopName: stopName,
-          nextStopName: nextName,
-          label: "Mot " + nextName,
-        };
+        return { state: "towards", label: "Mot " + nextName };
       }
-      return {
-        state: "passed",
-        stopName: stopName,
-        nextStopName: "",
-        label: "Passerte " + stopName,
-      };
+      return { state: "passed", label: "Passerte " + stop.name };
     }
-    return {
-      state: "at",
-      stopName: stopName,
-      nextStopName: "",
-      label: "På " + stopName,
-    };
+    return { state: "at", label: "På " + stop.name };
   }
 
-  async function fetchJourneyProgress(config, serviceJourneyId) {
-    if (!serviceJourneyId) {
+  function progressFromExpected(stops, boardStopName, nowMs) {
+    if (!stops.length) {
       return null;
     }
-    var cached = progressCache[serviceJourneyId];
-    var now = Date.now();
-    if (cached && now - cached.at < PROGRESS_CACHE_MS) {
-      return cached.progress;
+    var firstDep = stops[0].expectedDeparture || stops[0].expectedArrival;
+    if (firstDep && nowMs + PROGRESS_LEAD_MS < firstDep.getTime()) {
+      return { state: "origin", label: "Fra " + stops[0].name };
     }
-    try {
-      var data = await graphql(config, JOURNEY_PROGRESS_QUERY, {
-        id: serviceJourneyId,
-      });
-      var journey = data && data.serviceJourney;
-      var progress = deriveJourneyProgress(
-        (journey && journey.estimatedCalls) || []
-      );
-      progressCache[serviceJourneyId] = { at: now, progress: progress };
-      return progress;
-    } catch (error) {
-      console.warn("Kunne ikke hente turprogress", serviceJourneyId, error);
-      if (cached) {
-        return cached.progress;
+
+    var idx = -1;
+    for (var i = 0; i < stops.length; i++) {
+      var arrival = stops[i].expectedArrival || stops[i].expectedDeparture;
+      var departure = stops[i].expectedDeparture || stops[i].expectedArrival;
+      if (arrival && arrival.getTime() <= nowMs) {
+        idx = i;
       }
-      return null;
+      if (departure && departure.getTime() <= nowMs) {
+        idx = i;
+      }
     }
+
+    if (idx < 0) {
+      return { state: "origin", label: "Fra " + stops[0].name };
+    }
+
+    var stop = stops[idx];
+    var depAt = stop.expectedDeparture || stop.expectedArrival;
+    var arrAt = stop.expectedArrival || stop.expectedDeparture;
+    var next = stops[idx + 1];
+    var nextName = (next && next.name) || boardStopName || "";
+
+    // Ankommet, men ikke forventet avgått ennå
+    if (
+      arrAt &&
+      arrAt.getTime() <= nowMs &&
+      depAt &&
+      nowMs < depAt.getTime()
+    ) {
+      return { state: "at", label: "På " + stop.name };
+    }
+
+    if (depAt && depAt.getTime() <= nowMs) {
+      if (nextName) {
+        return { state: "towards", label: "Mot " + nextName };
+      }
+      return { state: "passed", label: "Passerte " + stop.name };
+    }
+
+    if (nextName) {
+      return { state: "towards", label: "Mot " + nextName };
+    }
+    return { state: "at", label: "På " + stop.name };
   }
 
-  async function fetchJourneyProgressMany(config, serviceJourneyIds) {
-    var unique = [];
-    var seen = {};
-    (serviceJourneyIds || []).forEach(function (id) {
-      if (id && !seen[id]) {
-        seen[id] = true;
-        unique.push(id);
+  function deriveJourneyProgress(departure, now) {
+    if (!departure || departure.cancelled || departure.serviceRun) {
+      return null;
+    }
+    var nowDate = now instanceof Date ? now : new Date();
+    var nowMs = nowDate.getTime();
+    var boardStopName = departure.quayName || "";
+    var stops = (departure.previousStops || []).slice();
+    var first = departure.firstStop;
+    if (first && (!stops.length || stops[0].name !== first.name)) {
+      // previous skal allerede inneholde first; behold first som fallback
+      if (!stops.length) {
+        stops = [first];
       }
+    }
+    if (!stops.length && first) {
+      stops = [first];
+    }
+    if (!stops.length) {
+      return null;
+    }
+
+    var boardTime = departure.expected;
+    var firstDep =
+      (first && (first.expectedDeparture || first.expectedArrival)) ||
+      stops[0].expectedDeparture ||
+      stops[0].expectedArrival;
+    var hasActual = stops.some(function (stop) {
+      return stop.actualArrival || stop.actualDeparture;
     });
-    var results = await Promise.allSettled(
-      unique.map(function (id) {
-        return fetchJourneyProgress(config, id).then(function (progress) {
-          return { id: id, progress: progress };
-        });
-      })
+
+    // Ikke gjett posisjon for avganger langt frem i tid før turen er i gang
+    if (!hasActual) {
+      var journeyStarted =
+        firstDep && nowMs + PROGRESS_LEAD_MS >= firstDep.getTime();
+      var soonEnough =
+        boardTime && boardTime.getTime() - nowMs <= PROGRESS_UPCOMING_MS;
+      if (!journeyStarted && !soonEnough) {
+        return null;
+      }
+    }
+
+    return (
+      progressFromActual(stops, boardStopName) ||
+      progressFromExpected(stops, boardStopName, nowMs)
     );
-    var map = {};
-    results.forEach(function (outcome) {
-      if (outcome.status === "fulfilled" && outcome.value) {
-        map[outcome.value.id] = outcome.value.progress;
-      }
-    });
-    return map;
+  }
+
+  function journeyProgressLabel(departure, now) {
+    var progress = deriveJourneyProgress(departure, now);
+    return (progress && progress.label) || "";
   }
 
   async function fetchWithTimeout(url, options, timeoutMs) {
@@ -531,6 +597,11 @@
     const occupancyStatus = call.occupancyStatus || "noData";
     const serviceJourneyId =
       (call.serviceJourney && call.serviceJourney.id) || "";
+    const sjCalls = call.serviceJourneyEstimatedCalls || {};
+    const previousStops = (sjCalls.previous || [])
+      .map(normalizeProgressCall)
+      .filter(Boolean);
+    const firstStop = normalizeProgressCall(sjCalls.first);
     return {
       lineId: line.id || "",
       line: line.publicCode || "–",
@@ -544,13 +615,15 @@
       cancelled: Boolean(call.cancellation),
       delayMinutes: delayMinutes,
       situations: situations,
+      quayName: quay.name || "",
       quayDescription: quay.description || "",
       quayCode: quay.publicCode || "",
       serviceJourneyId: serviceJourneyId,
       occupancyStatus: occupancyStatus,
       occupancyLabel: occupancyLabel(occupancyStatus),
       serviceRun: isServiceRun(destination, occupancyStatus),
-      progressLabel: "",
+      firstStop: firstStop,
+      previousStops: previousStops,
     };
   }
 
@@ -560,9 +633,8 @@
     fetchStopQuays: fetchStopQuays,
     fetchQuayLines: fetchQuayLines,
     fetchPlaceLines: fetchPlaceLines,
-    fetchJourneyProgress: fetchJourneyProgress,
-    fetchJourneyProgressMany: fetchJourneyProgressMany,
     deriveJourneyProgress: deriveJourneyProgress,
+    journeyProgressLabel: journeyProgressLabel,
     modeLabel: modeLabel,
     occupancyLabel: occupancyLabel,
     isServiceRun: isServiceRun,
