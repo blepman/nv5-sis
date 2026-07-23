@@ -47,6 +47,7 @@ Audit-logg: `sync-audit.log` i state-mappen (IP + allow/deny).
 - `content/` overskrives ikke av server-speil
 - Hvis sync allerede kjører, vises cached tavle
 - `main` → `content/` kopierer kun allowlistede filtyper (`html`, `css`, `js`, `woff2`, `png`, `webmanifest`, `json`); symlinks og path-traversal i zip avvises
+- HTML får `?v=<board-sha>` på CSS/JS/font-URL-er, så nettleseren ikke sitter på gammel cache etter «Hent ny tavle»
 
 Trenger PHP med **curl** (eller `allow_url_fopen`) og **zip**.
 

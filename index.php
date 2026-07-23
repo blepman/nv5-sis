@@ -157,10 +157,10 @@ try {
         }
     }
 
-    render($content);
+    render($content, $boardShaFile);
 } catch (Throwable $e) {
     if (is_file($content . '/index.html')) {
-        render($content);
+        render($content, $boardShaFile);
         exit;
     }
     http_response_code(503);
@@ -863,7 +863,47 @@ function send_security_headers(): void
     }
 }
 
-function render(string $content): void
+function board_asset_version(string $boardShaFile, string $content): string
+{
+    if (is_readable($boardShaFile)) {
+        $sha = trim((string) file_get_contents($boardShaFile));
+        if ($sha !== '') {
+            return substr($sha, 0, 12);
+        }
+    }
+    $index = $content . '/index.html';
+    if (is_file($index)) {
+        return (string) filemtime($index);
+    }
+    return (string) time();
+}
+
+/**
+ * Append ?v=… to local css/js/font/manifest URLs so browsers pick up new tavle files.
+ */
+function bust_board_asset_urls(string $html, string $version): string
+{
+    $v = rawurlencode($version);
+    $out = preg_replace_callback(
+        '/\b((?:href|src)=["\'])([^"\']+\.(?:css|js|webmanifest|woff2))(["\'])/i',
+        static function (array $m) use ($v): string {
+            $url = $m[2];
+            if (str_contains($url, '://') || str_starts_with($url, '//')) {
+                return $m[0];
+            }
+            if (preg_match('/([?&])v=[^&]*/', $url) === 1) {
+                $url = (string) preg_replace('/([?&])v=[^&]*/', '$1v=' . $v, $url, 1);
+            } else {
+                $url .= (str_contains($url, '?') ? '&' : '?') . 'v=' . $v;
+            }
+            return $m[1] . $url . $m[3];
+        },
+        $html
+    );
+    return is_string($out) ? $out : $html;
+}
+
+function render(string $content, string $boardShaFile = ''): void
 {
     $html = file_get_contents($content . '/index.html');
     if ($html === false) {
@@ -876,11 +916,13 @@ function render(string $content): void
 
     if (stripos($html, '<base ') === false) {
         if (preg_match('/<head[^>]*>/i', $html)) {
-            $html = preg_replace('/<head[^>]*>/i', '$0' . "\n    " . $base, $html, 1);
+            $html = preg_replace('/<head[^>]*>/i', '$0' . "\n    " . $base, $html, 1) ?? $html;
         } else {
             $html = $base . $html;
         }
     }
+
+    $html = bust_board_asset_urls($html, board_asset_version($boardShaFile, $content));
 
     send_security_headers();
     header('Content-Type: text/html; charset=utf-8');
