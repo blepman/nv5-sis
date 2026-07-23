@@ -766,6 +766,7 @@
       "</div>" +
       "</div>" +
       '<div class="departure__time-wrap">' +
+      '<div class="departure__time-stack">' +
       '<span class="departure__time departure__ticker' +
       (firstDelayClass
         ? " " + firstDelayClass
@@ -780,7 +781,7 @@
       ">" +
       escapeHtml(firstDelayLabel) +
       "</span>" +
-      "</div>" +
+      "</div></div>" +
       "</li>"
     );
   }
