@@ -639,23 +639,19 @@
       escapeHtml(quayKey(quayConfig)) +
       '">' +
       '<header class="quay-board__header">' +
-      '<div class="quay-board__titles">' +
       '<h2 class="quay-board__name">' +
       escapeHtml(quayConfig.name || result.name) +
-      "</h2>";
-    if (direction) {
-      html +=
-        '<p class="quay-board__direction">' +
-        escapeHtml(direction) +
-        "</p>";
-    }
-    html +=
-      "</div>" +
+      "</h2>" +
+      '<div class="quay-board__subheader">' +
+      '<p class="quay-board__direction">' +
+      escapeHtml(direction || "") +
+      "</p>" +
       '<p class="quay-board__sync ' +
       status.state +
       '">' +
       escapeHtml(status.text) +
       "</p>" +
+      "</div>" +
       "</header>";
 
     if (entry.error && !deps.length) {

@@ -244,15 +244,7 @@ body {
 }
 
 .quay-board__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
   margin-bottom: 0.55rem;
-}
-
-.quay-board__titles {
-  min-width: 0;
 }
 
 .quay-board__name {
@@ -261,8 +253,17 @@ body {
   font-weight: 700;
 }
 
+.quay-board__subheader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.2rem;
+}
+
 .quay-board__direction {
-  margin: 0.2rem 0 0;
+  margin: 0;
+  min-width: 0;
   color: var(--muted);
   font-size: 0.95rem;
 }
@@ -270,7 +271,6 @@ body {
 .quay-board__sync {
   margin: 0;
   flex-shrink: 0;
-  max-width: 48%;
   text-align: right;
   color: var(--muted);
   font-family: var(--mono);
