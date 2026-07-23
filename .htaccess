@@ -1,6 +1,32 @@
 DirectoryIndex index.php
 Options -Indexes
 
+# Skjul driftsmetadata, låser og README i webroot
+<IfModule mod_authz_core.c>
+  <FilesMatch "(?i)^(README\.md|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
+    Require all denied
+  </FilesMatch>
+  <FilesMatch "^\.">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "(?i)^(README\.md|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+  <FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+# Ikke kjør PHP under content/ (tavlefiler skal være statiske)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^content/.*\.php$ - [F,L]
+</IfModule>
+
 <IfModule mod_headers.c>
   <FilesMatch "\.(woff2|png|webmanifest)$">
     Header set Cache-Control "public, max-age=604800, immutable"

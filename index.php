@@ -6,11 +6,11 @@ declare(strict_types=1);
  *
  * Serverfiler (index.php, .htaccess, …):
  *   - Sjekkes ca. hver time
- *   - ?sync=server eller ?sync=both|1 tvinger sjekk
+ *   - ?sync=server eller ?sync=both|1 tvinger sjekk (åpent med vilje)
  *
  * Tavle (main → content/):
- *   - Intervall fra cookie nv5_github_interval (Innstillinger)
- *   - ?sync=main eller ?sync=both|1 tvinger sjekk
+ *   - Intervall fra cookie nv5_github_interval (Innstillinger), minimum 60s
+ *   - ?sync=main eller ?sync=both|1 tvinger sjekk (åpent med vilje)
  */
 
 $owner = 'blepman';
@@ -23,10 +23,10 @@ $boardBranch = 'main';
 // Server-branch: fast timeintervall
 $serverCheckIntervalSeconds = 3600;
 
-// Tavle/main: cookie eller fallback
+// Tavle/main: cookie eller fallback (minimum 60s — bruk ?sync= for umiddelbar sjekk)
 $boardCheckIntervalSeconds = 300;
 if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !== '') {
-    $boardCheckIntervalSeconds = max(0, min(86400, (int) $_COOKIE['nv5_github_interval']));
+    $boardCheckIntervalSeconds = normalize_board_interval((int) $_COOKIE['nv5_github_interval']);
 }
 
 $syncParam = isset($_GET['sync']) ? strtolower(trim((string) $_GET['sync'])) : '';
@@ -140,9 +140,18 @@ try {
         exit;
     }
     http_response_code(503);
+    send_security_headers();
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="nb"><meta charset="utf-8"><title>SIS</title>';
     echo '<h1>Tavlen er ikke klar</h1><p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
+}
+
+function normalize_board_interval(int $seconds): int
+{
+    if ($seconds < 60) {
+        return 60;
+    }
+    return min(86400, $seconds);
 }
 
 /**
@@ -254,8 +263,51 @@ function rm_tree(string $dir): void
     @rmdir($dir);
 }
 
+/**
+ * Relativ sti uten .., absolutte stier eller skjulte path-segmenter (unntatt tillatte).
+ */
+function is_safe_relative_path(string $relative): bool
+{
+    if ($relative === '' || str_contains($relative, "\0")) {
+        return false;
+    }
+    $relative = str_replace('\\', '/', $relative);
+    if ($relative[0] === '/' || preg_match('#^[a-zA-Z]:#', $relative) === 1) {
+        return false;
+    }
+    foreach (explode('/', $relative) as $part) {
+        if ($part === '..') {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * @return list<string>
+ */
+function board_allowed_extensions(): array
+{
+    return ['html', 'css', 'js', 'woff2', 'png', 'webmanifest', 'json'];
+}
+
+function board_file_allowed(string $basename): bool
+{
+    if ($basename === '' || $basename[0] === '.') {
+        return false;
+    }
+    $ext = strtolower(pathinfo($basename, PATHINFO_EXTENSION));
+    return in_array($ext, board_allowed_extensions(), true);
+}
+
+/**
+ * Kopier tre for server-sync. Hopper over symlinks.
+ */
 function copy_tree(string $src, string $dst): void
 {
+    if (is_link($src)) {
+        return;
+    }
     if (!is_dir($dst) && !mkdir($dst, 0755, true) && !is_dir($dst)) {
         throw new RuntimeException('Kunne ikke lage ' . $dst);
     }
@@ -263,12 +315,57 @@ function copy_tree(string $src, string $dst): void
         if ($item === '.' || $item === '..') {
             continue;
         }
+        if (!is_safe_relative_path($item)) {
+            continue;
+        }
         $from = $src . '/' . $item;
         $to = $dst . '/' . $item;
-        if (is_dir($from) && !is_link($from)) {
+        if (is_link($from)) {
+            continue;
+        }
+        if (is_dir($from)) {
             copy_tree($from, $to);
-        } elseif (!copy($from, $to)) {
-            throw new RuntimeException('Kunne ikke kopiere ' . $from);
+        } elseif (is_file($from)) {
+            copy_atomic($from, $to);
+        }
+    }
+}
+
+/**
+ * Kopier kun allowlistede tavlefiler fra main-zip til destinasjon.
+ */
+function copy_board_tree(string $src, string $dst): void
+{
+    if (is_link($src) || !is_dir($src)) {
+        throw new RuntimeException('Ugyldig main-kilde');
+    }
+    if (!is_dir($dst) && !mkdir($dst, 0755, true) && !is_dir($dst)) {
+        throw new RuntimeException('Kunne ikke lage ' . $dst);
+    }
+    foreach (scandir($src) ?: [] as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        if ($item[0] === '.' || !is_safe_relative_path($item)) {
+            continue;
+        }
+        $from = $src . '/' . $item;
+        $to = $dst . '/' . $item;
+        if (is_link($from)) {
+            continue;
+        }
+        if (is_dir($from)) {
+            copy_board_tree($from, $to);
+            // Fjern tomme mapper som ikke fikk filer
+            $children = array_values(array_filter(
+                scandir($to) ?: [],
+                static fn(string $n): bool => $n !== '.' && $n !== '..'
+            ));
+            if ($children === []) {
+                @rmdir($to);
+            }
+        } elseif (is_file($from) && board_file_allowed($item)) {
+            copy_atomic($from, $to);
         }
     }
 }
@@ -288,11 +385,74 @@ function write_atomic(string $path, string $data): void
 
 function copy_atomic(string $from, string $to): void
 {
+    if (is_link($from)) {
+        throw new RuntimeException('Symlink avvist: ' . $from);
+    }
     $data = file_get_contents($from);
     if ($data === false) {
         throw new RuntimeException('Kunne ikke lese ' . $from);
     }
     write_atomic($to, $data);
+}
+
+/**
+ * Pakk ut zip til $extractDir. Avviser path traversal, absolutte stier og symlinks.
+ */
+function extract_zip_safe(string $zipPath, string $extractDir): void
+{
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath) !== true) {
+        throw new RuntimeException('Kunne ikke åpne zip');
+    }
+
+    if (!is_dir($extractDir) && !mkdir($extractDir, 0755, true) && !is_dir($extractDir)) {
+        $zip->close();
+        throw new RuntimeException('Kunne ikke lage ' . $extractDir);
+    }
+
+    try {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if ($name === false || $name === '') {
+                continue;
+            }
+            $name = str_replace('\\', '/', $name);
+            if (!is_safe_relative_path($name)) {
+                throw new RuntimeException('Utrygg zip-sti');
+            }
+
+            if ($zip->getExternalAttributesIndex($i, $opsys, $attr) && $opsys === ZipArchive::OPSYS_UNIX) {
+                $type = ($attr >> 16) & 0170000;
+                // 0120000 = symlink
+                if ($type === 0120000) {
+                    throw new RuntimeException('Symlink i zip avvist');
+                }
+            }
+
+            $target = $extractDir . '/' . $name;
+            if (str_ends_with($name, '/')) {
+                if (!is_dir($target) && !mkdir($target, 0755, true) && !is_dir($target)) {
+                    throw new RuntimeException('Kunne ikke lage mappe i zip');
+                }
+                continue;
+            }
+
+            $parent = dirname($target);
+            if (!is_dir($parent) && !mkdir($parent, 0755, true) && !is_dir($parent)) {
+                throw new RuntimeException('Kunne ikke lage mappe i zip');
+            }
+
+            $data = $zip->getFromIndex($i);
+            if ($data === false) {
+                throw new RuntimeException('Kunne ikke lese zip-post');
+            }
+            if (file_put_contents($target, $data) === false) {
+                throw new RuntimeException('Kunne ikke skrive zip-post');
+            }
+        }
+    } finally {
+        $zip->close();
+    }
 }
 
 /**
@@ -349,20 +509,17 @@ function sync_server_branch(
     file_put_contents($zipPath, $zipData);
 
     try {
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException('Kunne ikke åpne server-zip');
-        }
-        mkdir($extract, 0755, true);
-        $zip->extractTo($extract);
-        $zip->close();
+        extract_zip_safe($zipPath, $extract);
 
         $entries = array_values(array_filter(scandir($extract) ?: [], fn($n) => $n !== '.' && $n !== '..'));
-        if (count($entries) !== 1) {
+        if (count($entries) !== 1 || !is_safe_relative_path($entries[0])) {
             throw new RuntimeException('Uventet server-zip-struktur');
         }
 
         $source = $extract . '/' . $entries[0];
+        if (is_link($source) || !is_dir($source)) {
+            throw new RuntimeException('Ugyldig server-zip-rot');
+        }
         if (!is_file($source . '/index.php')) {
             throw new RuntimeException('server mangler index.php');
         }
@@ -372,12 +529,17 @@ function sync_server_branch(
             if ($item === '.' || $item === '..' || isset($preserve[$item])) {
                 continue;
             }
+            if (!is_safe_relative_path($item)) {
+                continue;
+            }
             $from = $source . '/' . $item;
             $to = $root . '/' . $item;
-            if (is_dir($from) && !is_link($from)) {
-                // Mapper fra server-branchen (sjeldent) – kopier innhold
+            if (is_link($from)) {
+                continue;
+            }
+            if (is_dir($from)) {
                 copy_tree($from, $to);
-            } else {
+            } elseif (is_file($from)) {
                 copy_atomic($from, $to);
             }
         }
@@ -423,21 +585,20 @@ function sync_board_from_github(
     file_put_contents($zipPath, $zipData);
 
     try {
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException('Kunne ikke åpne main-zip');
-        }
-        mkdir($extract, 0755, true);
-        $zip->extractTo($extract);
-        $zip->close();
+        extract_zip_safe($zipPath, $extract);
 
         $entries = array_values(array_filter(scandir($extract) ?: [], fn($n) => $n !== '.' && $n !== '..'));
-        if (count($entries) !== 1) {
+        if (count($entries) !== 1 || !is_safe_relative_path($entries[0])) {
             throw new RuntimeException('Uventet main-zip-struktur');
         }
 
+        $source = $extract . '/' . $entries[0];
+        if (is_link($source) || !is_dir($source)) {
+            throw new RuntimeException('Ugyldig main-zip-rot');
+        }
+
         rm_tree($tmp);
-        copy_tree($extract . '/' . $entries[0], $tmp);
+        copy_board_tree($source, $tmp);
         if (!is_file($tmp . '/index.html')) {
             throw new RuntimeException('main mangler index.html');
         }
@@ -455,6 +616,14 @@ function sync_board_from_github(
         rm_tree($extract);
         rm_tree($tmp);
     }
+}
+
+function send_security_headers(): void
+{
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: no-referrer');
+    header('X-Frame-Options: SAMEORIGIN');
+    header("Content-Security-Policy: frame-ancestors 'self'; upgrade-insecure-requests");
 }
 
 function render(string $content): void
@@ -476,6 +645,7 @@ function render(string $content): void
         }
     }
 
+    send_security_headers();
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
     echo $html;
