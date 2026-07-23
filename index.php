@@ -6,11 +6,11 @@ declare(strict_types=1);
  *
  * Serverfiler (index.php, .htaccess, …):
  *   - Sjekkes ca. hver time
- *   - ?sync=server eller ?sync=both|1 tvinger sjekk (åpent med vilje)
+ *   - ?sync=server|both tvinger sjekk (rate-limitet; valgfri nøkkel)
  *
  * Tavle (main → content/):
  *   - Intervall fra cookie nv5_github_interval (Innstillinger), minimum 60s
- *   - ?sync=main eller ?sync=both|1 tvinger sjekk (åpent med vilje)
+ *   - ?sync=main|both tvinger sjekk (rate-limitet)
  */
 
 $owner = 'blepman';
@@ -23,6 +23,10 @@ $boardBranch = 'main';
 // Server-branch: fast timeintervall
 $serverCheckIntervalSeconds = 3600;
 
+// Forced sync rate limits (per IP)
+$forceBoardCooldownSeconds = 45;
+$forceServerCooldownSeconds = 120;
+
 // Tavle/main: cookie eller fallback (minimum 60s — bruk ?sync= for umiddelbar sjekk)
 $boardCheckIntervalSeconds = 300;
 if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !== '') {
@@ -32,6 +36,7 @@ if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !=
 $syncParam = isset($_GET['sync']) ? strtolower(trim((string) $_GET['sync'])) : '';
 $forceServerSync = in_array($syncParam, ['server', 'both', '1', 'all'], true);
 $forceBoardSync = in_array($syncParam, ['main', 'board', 'both', '1', 'all'], true);
+$syncKey = isset($_GET['key']) ? (string) $_GET['key'] : '';
 
 $root = __DIR__;
 $stateDir = ensure_state_dir($root);
@@ -46,6 +51,22 @@ $boardLockFile = $stateDir . '/board.lock';
 $serverShaFile = $stateDir . '/server-sha';
 $serverCheckFile = $stateDir . '/server-check';
 $serverLockFile = $stateDir . '/server.lock';
+
+if ($forceServerSync || $forceBoardSync) {
+    $gate = gate_forced_sync(
+        $stateDir,
+        $forceServerSync,
+        $forceBoardSync,
+        $syncKey,
+        $forceBoardCooldownSeconds,
+        $forceServerCooldownSeconds
+    );
+    $forceServerSync = $gate['server'];
+    $forceBoardSync = $gate['board'];
+    if ($gate['retry_after'] > 0) {
+        header('Retry-After: ' . (string) $gate['retry_after']);
+    }
+}
 
 try {
     // 1) Speil server-branchen inn i /sis/ (uten å røre content/)
@@ -177,6 +198,113 @@ function ensure_state_dir(string $root): string
         }
     }
     throw new RuntimeException('Kunne ikke lage state-mappe utenfor webroot');
+}
+
+function client_ip(): string
+{
+    $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    return $ip !== '' ? $ip : 'unknown';
+}
+
+/**
+ * Valgfri delt hemmelighet for ?sync=server|both.
+ * Sett miljøvariabel NV5_SYNC_SERVER_KEY, eller fil sync-server-secret i state-mappen.
+ */
+function sync_server_secret(string $stateDir): string
+{
+    $fromEnv = trim((string) (getenv('NV5_SYNC_SERVER_KEY') ?: ''));
+    if ($fromEnv !== '') {
+        return $fromEnv;
+    }
+
+    $file = $stateDir . '/sync-server-secret';
+    if (is_readable($file)) {
+        return trim((string) file_get_contents($file));
+    }
+
+    return '';
+}
+
+function log_sync_event(string $stateDir, string $message): void
+{
+    try {
+        $line = sprintf(
+            "[%s] ip=%s %s\n",
+            gmdate('c'),
+            client_ip(),
+            $message
+        );
+        @file_put_contents($stateDir . '/sync-audit.log', $line, FILE_APPEND | LOCK_EX);
+    } catch (Throwable $e) {
+        // Best-effort audit logging.
+    }
+}
+
+/**
+ * Rate-limit forced sync per IP. Valgfri nøkkel for server-sync.
+ * Soft-deny: slår av force-flagg (planlagt intervall gjelder fortsatt).
+ *
+ * @return array{server:bool,board:bool,retry_after:int}
+ */
+function gate_forced_sync(
+    string $stateDir,
+    bool $wantServer,
+    bool $wantBoard,
+    string $providedKey,
+    int $boardCooldownSeconds,
+    int $serverCooldownSeconds
+): array {
+    $allowServer = $wantServer;
+    $allowBoard = $wantBoard;
+    $retryAfter = 0;
+    $ip = client_ip();
+    $ipKey = hash('sha256', $ip);
+    $now = time();
+
+    if ($allowServer) {
+        $secret = sync_server_secret($stateDir);
+        if ($secret !== '') {
+            if ($providedKey === '' || !hash_equals($secret, $providedKey)) {
+                log_sync_event($stateDir, 'deny kind=server reason=bad_or_missing_key');
+                $allowServer = false;
+                $retryAfter = max($retryAfter, 60);
+            }
+        }
+    }
+
+    if ($allowServer) {
+        $stampFile = $stateDir . '/force-sync-server-' . $ipKey . '.stamp';
+        $last = is_readable($stampFile) ? (int) trim((string) @file_get_contents($stampFile)) : 0;
+        if ($last > 0 && ($now - $last) < $serverCooldownSeconds) {
+            $wait = max(1, $serverCooldownSeconds - ($now - $last));
+            log_sync_event($stateDir, "deny kind=server reason=rate_limit retry_after={$wait}");
+            $allowServer = false;
+            $retryAfter = max($retryAfter, $wait);
+        } else {
+            @file_put_contents($stampFile, (string) $now, LOCK_EX);
+            log_sync_event($stateDir, 'allow kind=server');
+        }
+    }
+
+    if ($allowBoard) {
+        $stampFile = $stateDir . '/force-sync-board-' . $ipKey . '.stamp';
+        $last = is_readable($stampFile) ? (int) trim((string) @file_get_contents($stampFile)) : 0;
+        if ($last > 0 && ($now - $last) < $boardCooldownSeconds) {
+            $wait = max(1, $boardCooldownSeconds - ($now - $last));
+            log_sync_event($stateDir, "deny kind=board reason=rate_limit retry_after={$wait}");
+            $allowBoard = false;
+            $retryAfter = max($retryAfter, $wait);
+        } else {
+            @file_put_contents($stampFile, (string) $now, LOCK_EX);
+            log_sync_event($stateDir, 'allow kind=board');
+        }
+    }
+
+    return [
+        'server' => $allowServer,
+        'board' => $allowBoard,
+        'retry_after' => $retryAfter,
+    ];
 }
 
 /**
@@ -704,10 +832,35 @@ function sync_board_from_github(
 
 function send_security_headers(): void
 {
+    // Én CSP her. Unngå å sette en andre CSP i nginx (browsere håndhever begge).
+    header(
+        "Content-Security-Policy: default-src 'self'; " .
+        "base-uri 'self'; " .
+        "form-action 'self'; " .
+        "frame-ancestors 'none'; " .
+        "object-src 'none'; " .
+        "script-src 'self'; " .
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+        "font-src 'self' https://fonts.gstatic.com data:; " .
+        "img-src 'self' data: https:; " .
+        "connect-src 'self' https://api.entur.io; " .
+        "worker-src 'none'; " .
+        "manifest-src 'self'; " .
+        'upgrade-insecure-requests'
+    );
     header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
     header('Referrer-Policy: no-referrer');
-    header('X-Frame-Options: SAMEORIGIN');
-    header("Content-Security-Policy: frame-ancestors 'self'; upgrade-insecure-requests");
+    header('Permissions-Policy: accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()');
+    header('Cross-Origin-Resource-Policy: same-origin');
+    header('Cross-Origin-Opener-Policy: same-origin');
+
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443')
+        || (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+    if ($https) {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
 }
 
 function render(string $content): void
