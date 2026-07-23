@@ -746,7 +746,6 @@
     var destinationLabel = multiDestination
       ? first.destination || "Neste avganger"
       : uniqueDestinations[0] || "Neste avganger";
-    var firstDelayClass = items[0].delayClass || "";
     var firstStatus = items[0].status || "scheduled";
 
     return (
