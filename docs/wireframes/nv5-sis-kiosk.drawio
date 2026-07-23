@@ -1,0 +1,274 @@
+<mxfile host="app.diagrams.net" agent="nv5-sis" version="22.1.0" type="device">
+  <diagram id="board-portrait" name="1. Tavle (portrett)">
+    <mxGraphModel dx="900" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="0" arrows="0" fold="1" page="1" pageScale="1" pageWidth="420" pageHeight="920" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="note-board" value="NV5-SIS kiosk — layout wireframe (fra kode). Ingen sesong-temaer; én mørk kiosk-visning. Åpne i diagrams.net / draw.io." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="380" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Device frame -->
+        <mxCell id="phone" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#666666;strokeWidth=2;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="55" width="340" height="820" as="geometry" />
+        </mxCell>
+
+        <!-- HEADER -->
+        <mxCell id="hdr" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;align=left;" vertex="1" parent="1">
+          <mxGeometry x="55" y="70" width="310" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr-title" value="NV5-SIS&#xa;.board__stop" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=14;fontStyle=1;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="70" y="78" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr-clock" value="HH:MM:SS&#xa;#clock" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#b7c3d6;" vertex="1" parent="1">
+          <mxGeometry x="70" y="112" width="120" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="menu-btn" value="☰&#xa;menu__toggle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#4a5568;fontSize=10;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="320" y="82" width="30" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-hdr" value=".board__header  (flex: brand | menu)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="55" y="55" width="220" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- QUAY BOARD -->
+        <mxCell id="quay" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#f4c15d;dashed=1;dashPattern=4 2;" vertex="1" parent="1">
+          <mxGeometry x="55" y="155" width="310" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-quay" value=".quay-board  (JS × N holdeplasser)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="60" y="158" width="220" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="quay-name" value="Holdeplassnavn&#xa;.quay-board__name" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=13;fontStyle=1;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="70" y="178" width="200" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="quay-sub" value="Retning / Alle retninger&#xa;.quay-board__direction" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#b7c3d6;" vertex="1" parent="1">
+          <mxGeometry x="70" y="208" width="160" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="quay-sync" value="HH:MM:SS&#xa;.quay-board__sync&#xa;(ok/stale/error)" style="text;html=1;strokeColor=none;fillColor=none;align=right;fontSize=9;fontColor=#7dd3a4;" vertex="1" parent="1">
+          <mxGeometry x="250" y="200" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Featured departure WITH situation -->
+        <mxCell id="dep1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="250" width="280" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-dep1" value=".departure  featured + avvik" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="70" y="234" width="160" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-status" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7dd3a4;strokeColor=none;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="78" y="260" width="4" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-line" value="5&#xa;.departure__line&#xa;= main-høyde" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ec5b2a;strokeColor=none;fontSize=9;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="260" width="44" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-warn" value="!&#xa;situation-icon&#xa;= linje-boks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0c674;strokeColor=none;fontSize=8;fontColor=#111111;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="338" width="44" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-dest" value="Destinasjon&#xa;Retning&#xa;Sist sett …&#xa;.departure__main&#xa;min-h 4.1rem · equalisert" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="145" y="258" width="130" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-time" value="Nå&#xa;+1 min&#xa;tid midtstilt" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#7dd3a4;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="268" width="55" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d1-sit" value="Avvikstekst midtstilt i rad&#xa;.departure__situation" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=9;fontColor=#b7c3d6;" vertex="1" parent="1">
+          <mxGeometry x="145" y="345" width="190" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Featured without situation -->
+        <mxCell id="dep2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="440" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-dep2" value=".departure  featured (uten avvik)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="70" y="425" width="180" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="d2-status" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0c674;strokeColor=none;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="78" y="450" width="4" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d2-line" value="12" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0067c0;strokeColor=none;fontSize=14;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="450" width="44" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d2-dest" value="Destinasjon&#xa;Retning / sist sett&#xa;(tekst midtstilt ved luft)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="145" y="450" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d2-time" value="3 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontColor=#e8eef7;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="285" y="465" width="50" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Ticker -->
+        <mxCell id="dep3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="550" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-dep3" value=".departure--ticker  (siste element)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="70" y="535" width="200" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-status" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7dd3a4;strokeColor=none;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="78" y="560" width="4" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-line" value="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0b91ef;strokeColor=none;fontSize=14;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="560" width="44" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-dest" value="Destinasjon&#xa;(kan byttes ved multi)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="145" y="560" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d3-ticker" value="⇅ ticker&#xa;3.1rem&#xa;midtstilt&#xa;fade topp=bunn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#f4c15d;dashed=1;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="275" y="568" width="60" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rules" value="Antall: elementsPerQuay − 1 featured + 1 ticker (hvis ≥2).&#xa;Høyde: syncDepartureBadges() → alle .departure__main = maks featured (cap 28vh)." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#b7c3d6;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="70" y="655" width="280" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- FOOTER -->
+        <mxCell id="ftr" value="server abcd · main efgh&#xa;.board__footer  (showBuildInfo)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#4a5568;fontSize=10;fontColor=#b7c3d6;" vertex="1" parent="1">
+          <mxGeometry x="55" y="810" width="310" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl-grid" value=".board  CSS grid: auto | 1fr | auto&#xa;(header · main · footer)  gap 1rem  + safe-area" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#888888;" vertex="1" parent="1">
+          <mxGeometry x="40" y="880" width="340" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="departure-anatomy" name="2. Avgangsrad anatomi">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="a-title" value="Avgangsrad — DOM / CSS-anatomi" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=16;fontStyle=1;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Big anatomy card -->
+        <mxCell id="card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#333333;strokeWidth=2;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="520" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="aside" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#f4c15d;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="90" width="90" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="aside-lbl" value=".departure__aside&#xa;flex row" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="55" y="92" width="90" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="status" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7dd3a4;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="65" y="125" width="6" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="status-lbl" value="status&#xa;0.22rem&#xa;realtime=ok&#xa;sched=warn&#xa;cancel=late" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=8;fontColor=#7dd3a4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="80" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lineb" value="LINJE&#xa;2.75rem bred&#xa;høyde=main" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ec5b2a;strokeColor=none;fontSize=10;fontColor=#fff;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="82" y="125" width="50" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="warnb" value="⚠&#xa;= samme&#xa;størrelse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0c674;strokeColor=none;fontSize=10;fontColor=#111;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="82" y="225" width="50" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="body" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#f4c15d;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="90" width="380" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="body-lbl" value=".departure__body  flex column  gap 0.25rem" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#f4c15d;" vertex="1" parent="1">
+          <mxGeometry x="170" y="95" width="280" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mainb" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#7dd3a4;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="175" y="120" width="350" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="main-lbl" value=".departure__main  grid 1fr | auto · align center · min-height 4.1rem" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#7dd3a4;" vertex="1" parent="1">
+          <mxGeometry x="180" y="122" width="340" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="destb" value=".departure__dest-wrap&#xa;• destination&#xa;• direction?&#xa;• meta?&#xa;• progress? (Sist sett / Forventet)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;align=left;spacingLeft=8;fontSize=10;fontColor=#e8eef7;" vertex="1" parent="1">
+          <mxGeometry x="185" y="145" width="230" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="timeb" value="Nå&#xa;+delay&#xa;time-wrap&#xa;center" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontSize=10;fontColor=#7dd3a4;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="145" width="85" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sitb" value=".departure__situation  (valgfri)&#xa;tekst midtstilt vertikalt når den ikke fyller høyden (= main)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#f0c674;align=left;spacingLeft=8;fontSize=10;fontColor=#b7c3d6;" vertex="1" parent="1">
+          <mxGeometry x="175" y="235" width="350" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Legend / tokens -->
+        <mxCell id="tokens" value="CSS-tokens&#xa;&#xa;--bg #0b1220&#xa;--bg-lift #121a2b&#xa;--text #e8eef7&#xa;--muted #b7c3d6&#xa;--accent #f4c15d&#xa;--metro #ec5b2a&#xa;--ok #7dd3a4&#xa;--warn #f0c674&#xa;--late #ff8a8a&#xa;--departure-line-size 2.75rem&#xa;--departure-status-width 0.22rem&#xa;&#xa;Landscape max-h 500px:&#xa;line-size 2.3rem&#xa;main min-h 3.6rem" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;align=left;spacingLeft=12;spacingTop=8;fontSize=11;fontColor=#222222;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="600" y="70" width="220" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="js-notes" value="JS som påvirker layout&#xa;&#xa;• syncDepartureBadges() — equaliserer main/line/warn&#xa;• Ticker: 14px/s, item-h = viewport 3.1rem&#xa;• Situasjon: roterer hvert 15s&#xa;• elementsPerQuay (2–8), compactDepartures=4&#xa;• showJourneyProgress / Occupancy / ServiceRuns&#xa;• showBuildInfo → footer SHA&#xa;&#xa;Ingen sesong- eller theme-switcher i repo." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f4c15d;align=left;spacingLeft=12;spacingTop=8;fontSize=11;fontColor=#222222;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="600" y="410" width="220" height="220" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tree" value="Hierarki&#xa;&#xa;.departure&#xa; ├─ .departure__aside&#xa; │   ├─ .departure__status&#xa; │   └─ .departure__badges&#xa; │       ├─ .departure__line-wrap &gt; .departure__line&#xa; │       └─ .departure__situation-icon?&#xa; └─ .departure__body&#xa;     ├─ .departure__main&#xa;     │   ├─ .departure__dest-wrap&#xa;     │   └─ .departure__time-wrap&#xa;     │       ├─ .departure__time-stack  ELLER&#xa;     │       └─ .departure__ticker&#xa;     └─ .departure__situation?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eef7;strokeColor=#4a5568;align=left;spacingLeft=12;spacingTop=8;fontFamily=Courier New;fontSize=10;fontColor=#111111;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="520" height="240" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="settings-menu" name="3. Meny og innstillinger">
+    <mxGraphModel dx="1000" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="0" arrows="0" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="s-title" value="Meny + innstillinger (overlay)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="360" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Menu panel -->
+        <mxCell id="menu-panel" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="200" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="menu-lbl" value=".menu__panel  min-width 12.5rem" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="55" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="mi1" value="Innstillinger" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="85" width="180" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="mi2" value="Hent ny tavle  (?sync=main)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="128" width="180" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="mi3" value="Slett lokal lagring" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#3a1a1a;strokeColor=#ff8a8a;fontColor=#ff8a8a;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="171" width="180" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- Settings dialog -->
+        <mxCell id="dlg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#121a2b;strokeColor=#4a5568;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="70" width="360" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="dlg-lbl" value="dialog.settings  max-width min(32rem, 100vw-1.5rem)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="280" y="55" width="360" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="dlg-hdr" value="Innstillinger          [Lagre] [Lukk]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2740;strokeColor=#4a5568;fontColor=#e8eef7;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="295" y="85" width="330" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f1" value="Elementer per holdeplass  [ 3 ]&#xa;N−1 featured + 1 ticker" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="140" width="330" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="f2" value="Avgangsinformasjon&#xa;☑ Vis sist sett / forventet&#xa;☑ Vis belegg&#xa;☑ Vis tjenestekjøring&#xa;☑ Vis commit-hash i footer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="205" width="330" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" value="Sjekk tavlekode (main)&#xa;[ Hvert 5. minutt ▼ ]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="330" width="330" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f4" value="Serverfiler (server-branch)&#xa;[ Bygg siden på nytt ]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="400" width="330" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f5" value="Valgte holdeplasser&#xa;• Quay / StopPlace + linjefilter&#xa;• Fjern" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="470" width="330" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f6" value="Legg til holdeplass&#xa;[ Søk ………… ]&#xa;→ resultater → kai/retning → linjer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0b1220;strokeColor=#4a5568;fontColor=#e8eef7;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="295" y="565" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f7" value="Persistens: localStorage nv5-sis-settings&#xa;+ cookie nv5_github_interval" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#888;" vertex="1" parent="1">
+          <mxGeometry x="295" y="670" width="330" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="open-hint" value="Anbefalt app: diagrams.net (draw.io)&#xa;Fil: docs/wireframes/nv5-sis-kiosk.drawio&#xa;&#xa;Alternativ: Penpot (importer SVG-eksport&#xa;fra diagrams.net om ønskelig)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#7dd3a4;align=left;spacingLeft=12;spacingTop=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="200" height="140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
