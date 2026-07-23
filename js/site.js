@@ -181,10 +181,15 @@
     if (els.buildBoardSha) {
       els.buildBoardSha.textContent = shas.board || "----";
     }
-    els.buildFooter.hidden = !(
-      settings.showBuildInfo &&
-      (shas.server || shas.board)
+    var showBuild =
+      settings.showBuildInfo && Boolean(shas.server || shas.board);
+    els.buildFooter.querySelectorAll(".board__footer-build").forEach(
+      function (el) {
+        el.hidden = !showBuild;
+      }
     );
+    // Footer stays visible for favicon download even when build hashes are off.
+    els.buildFooter.hidden = false;
   }
 
   function loadSettings() {

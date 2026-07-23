@@ -113,6 +113,23 @@ body {
   color: var(--text);
 }
 
+.board__footer-item[hidden] {
+  display: none;
+}
+
+a.board__footer-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+a.board__footer-link:hover,
+a.board__footer-link:focus-visible {
+  color: var(--text);
+  text-decoration-color: currentColor;
+}
+
 .board__header {
   position: relative;
   z-index: 40;
