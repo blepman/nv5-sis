@@ -410,6 +410,50 @@
     return "";
   }
 
+  function formatDelayLabel(departure) {
+    if (!departure || departure.cancelled) {
+      return "";
+    }
+    var delay = delaySecondsOf(departure);
+    if (delay <= 29) {
+      return "";
+    }
+    if (delay < 60) {
+      return "+" + delay + " sek";
+    }
+    var min = Math.round(delay / 60);
+    return "+" + min + " min";
+  }
+
+  function renderTimeBlock(timeLabel, delayClass, isNow, delayLabel) {
+    var timeClasses = "departure__time";
+    if (delayClass) {
+      timeClasses += " " + delayClass;
+    } else if (isNow) {
+      timeClasses += " is-now";
+    }
+    var delayClasses = "departure__delay";
+    if (delayClass) {
+      delayClasses += " " + delayClass;
+    }
+    return (
+      '<div class="departure__time-wrap">' +
+      '<span class="' +
+      timeClasses +
+      '">' +
+      escapeHtml(timeLabel) +
+      "</span>" +
+      (delayLabel
+        ? '<span class="' +
+          delayClasses +
+          '">' +
+          escapeHtml(delayLabel) +
+          "</span>"
+        : "") +
+      "</div>"
+    );
+  }
+
   function lineStatusKind(departure) {
     if (departure.cancelled) {
       return "cancelled";
@@ -537,12 +581,7 @@
     var direction = departureDirection(departure, includeDirection);
     var progress = journeyProgress(departure, now);
     var delayClass = delayTimeClass(departure);
-    var timeClasses = "departure__time";
-    if (delayClass) {
-      timeClasses += " " + delayClass;
-    } else if (isNow) {
-      timeClasses += " is-now";
-    }
+    var delayLabel = formatDelayLabel(departure);
 
     return (
       '<li class="departure' +
@@ -565,11 +604,7 @@
         : "") +
       renderProgressHtml(progress) +
       "</div>" +
-      '<span class="' +
-      timeClasses +
-      '">' +
-      escapeHtml(timeLabel) +
-      "</span>" +
+      renderTimeBlock(timeLabel, delayClass, isNow, delayLabel) +
       "</li>"
     );
   }
@@ -608,12 +643,15 @@
         statusLabel: lineStatusLabel(lineStatusKind(dep)),
         cancelled: Boolean(dep.cancelled),
         delayClass: delayClass,
+        delayLabel: formatDelayLabel(dep),
         now: time === "Nå",
       };
     });
     var destinationLabel = multiDestination
       ? first.destination || "Neste avganger"
       : uniqueDestinations[0] || "Neste avganger";
+    var firstDelayClass = items[0].delayClass || "";
+    var firstDelayLabel = items[0].delayLabel || "";
 
     return (
       '<li class="departure departure--ticker' +
@@ -623,19 +661,28 @@
       '" data-ticker-sync-dest="' +
       (multiLine || multiDestination ? "1" : "0") +
       '">' +
-      renderLineBadge(first, 'data-ticker-line-wrap') +
+      renderLineBadge(first, "data-ticker-line-wrap") +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination" data-ticker-destination>' +
       escapeHtml(destinationLabel) +
       "</div>" +
       "</div>" +
+      '<div class="departure__time-wrap">' +
       '<span class="departure__time departure__ticker' +
-      (items[0].delayClass
-        ? " " + items[0].delayClass
+      (firstDelayClass
+        ? " " + firstDelayClass
         : items[0].now
           ? " is-now"
           : "") +
       '" aria-live="off"></span>' +
+      '<span class="departure__delay' +
+      (firstDelayClass ? " " + firstDelayClass : "") +
+      '" data-ticker-delay' +
+      (firstDelayLabel ? "" : " hidden") +
+      ">" +
+      escapeHtml(firstDelayLabel) +
+      "</span>" +
+      "</div>" +
       "</li>"
     );
   }
@@ -661,6 +708,7 @@
       return;
     }
     var slot = node.querySelector(".departure__ticker");
+    var delayEl = node.querySelector("[data-ticker-delay]");
     var lineWrap = node.querySelector("[data-ticker-line-wrap]");
     var lineEl = lineWrap
       ? lineWrap.querySelector(".departure__line")
@@ -732,6 +780,21 @@
       }
       if (destEl && syncDestination && item.destination) {
         destEl.textContent = item.destination;
+      }
+      if (delayEl) {
+        delayEl.className = "departure__delay";
+        if (item.delayClass) {
+          delayEl.className += " " + item.delayClass;
+        }
+        if (item.delayLabel) {
+          delayEl.textContent = item.delayLabel;
+          delayEl.hidden = false;
+          delayEl.removeAttribute("hidden");
+        } else {
+          delayEl.textContent = "";
+          delayEl.hidden = true;
+          delayEl.setAttribute("hidden", "");
+        }
       }
       slot.classList.remove("is-now", "is-delay-warn", "is-delay-late");
       if (item.delayClass) {

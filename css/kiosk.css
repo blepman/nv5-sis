@@ -343,6 +343,15 @@ body {
   padding-top: 0.15rem;
 }
 
+.departure__time-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
 .departure--cancelled {
   opacity: 0.65;
 }
@@ -530,6 +539,23 @@ body {
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.departure__delay {
+  display: block;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.departure__delay[hidden] {
+  display: none !important;
 }
 
 .departure__time.is-now,
@@ -538,12 +564,14 @@ body {
 }
 
 .departure__time.is-delay-warn,
-.departure__ticker-item.is-delay-warn {
+.departure__ticker-item.is-delay-warn,
+.departure__delay.is-delay-warn {
   color: var(--warn);
 }
 
 .departure__time.is-delay-late,
-.departure__ticker-item.is-delay-late {
+.departure__ticker-item.is-delay-late,
+.departure__delay.is-delay-late {
   color: var(--late);
 }
 
