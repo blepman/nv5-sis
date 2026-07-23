@@ -440,6 +440,7 @@
     }
     return (
       '<div class="departure__time-wrap">' +
+      '<div class="departure__time-stack">' +
       '<span class="' +
       timeClasses +
       '">' +
@@ -452,7 +453,7 @@
           escapeHtml(delayLabel) +
           "</span>"
         : "") +
-      "</div>"
+      "</div></div>"
     );
   }
 

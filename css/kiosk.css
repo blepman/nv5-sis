@@ -333,7 +333,7 @@ body {
   grid-template-rows: auto;
   column-gap: 0.5rem;
   row-gap: 0.4rem;
-  align-items: center;
+  align-items: start;
   padding: 0.7rem 0.4rem 0.7rem 0.35rem;
   background: color-mix(in srgb, var(--bg-lift) 88%, transparent);
   border: 1px solid var(--line);
@@ -381,12 +381,23 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   justify-self: end;
-  gap: 0.12rem;
+  align-self: start;
+  gap: 0.1rem;
   min-width: 0;
-  align-self: center;
+  height: fit-content;
   padding-right: 0.05rem;
+  padding-top: 0.15rem;
+}
+
+.departure__time-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.1rem;
+  line-height: 1.15;
 }
 
 .departure--cancelled {
@@ -447,8 +458,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  align-self: center;
+  align-self: start;
   min-width: 0;
+  padding-top: 0.05rem;
 }
 
 .departure__dest-wrap {
