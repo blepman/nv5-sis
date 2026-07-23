@@ -263,10 +263,8 @@
   }
 
   function updateBoardTitle() {
-    if (settings.quays.length === 1) {
-      els.boardTitle.textContent = settings.quays[0].name;
-    } else {
-      els.boardTitle.textContent = settings.quays.length + " holdeplasser";
+    if (els.boardTitle) {
+      els.boardTitle.textContent = "NV5-SIS";
     }
   }
 

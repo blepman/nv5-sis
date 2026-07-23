@@ -38,47 +38,44 @@
   <body>
     <div class="board" id="board">
       <header class="board__header">
-        <div class="board__titles">
-          <p class="board__eyebrow">Sanntid</p>
-          <h1 class="board__stop" id="boardTitle">Avganger</h1>
-        </div>
-        <div class="board__header-right">
-          <div class="menu" id="appMenu">
-            <button
-              type="button"
-              class="menu__toggle"
-              id="menuToggle"
-              aria-label="Meny"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="menuPanel"
-            >
-              <span class="menu__icon" aria-hidden="true"></span>
-            </button>
-            <div class="menu__panel" id="menuPanel" hidden>
-              <button type="button" class="menu__item" id="settingsOpen">
-                Innstillinger
-              </button>
-              <button
-                type="button"
-                class="menu__item"
-                id="syncServer"
-                title="Henter PHP/serverfiler fra GitHub-branchen server"
-              >
-                Bygg siden på nytt
-              </button>
-              <button
-                type="button"
-                class="menu__item"
-                id="syncBoard"
-                title="Henter HTML/CSS/JS fra GitHub-branchen main"
-              >
-                Bygg tavlen på nytt
-              </button>
-            </div>
-          </div>
+        <div class="board__brand">
+          <h1 class="board__stop" id="boardTitle">NV5-SIS</h1>
           <div class="board__clock" aria-live="polite">
             <time id="clock" datetime="">--:--:--</time>
+          </div>
+        </div>
+        <div class="menu" id="appMenu">
+          <button
+            type="button"
+            class="menu__toggle"
+            id="menuToggle"
+            aria-label="Meny"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="menuPanel"
+          >
+            <span class="menu__icon" aria-hidden="true"></span>
+          </button>
+          <div class="menu__panel" id="menuPanel" hidden>
+            <button type="button" class="menu__item" id="settingsOpen">
+              Innstillinger
+            </button>
+            <button
+              type="button"
+              class="menu__item"
+              id="syncServer"
+              title="Henter PHP/serverfiler fra GitHub-branchen server"
+            >
+              Bygg siden på nytt
+            </button>
+            <button
+              type="button"
+              class="menu__item"
+              id="syncBoard"
+              title="Henter HTML/CSS/JS fra GitHub-branchen main"
+            >
+              Bygg tavlen på nytt
+            </button>
           </div>
         </div>
       </header>
