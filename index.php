@@ -349,7 +349,7 @@ function legacy_webroot_state_map(): array
  */
 function server_sync_skip_web(): array
 {
-    return ['README.md', '.gitignore', 'nginx-sis-pwa.conf'];
+    return ['README.md', '.gitignore'];
 }
 
 /**
@@ -359,7 +359,7 @@ function server_sync_skip_web(): array
  */
 function server_sync_required_files(): array
 {
-    return ['index.php', '.htaccess'];
+    return ['index.php', '.htaccess', 'nginx-sis-pwa.conf'];
 }
 
 function server_webroot_complete(string $root): bool

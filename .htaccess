@@ -3,7 +3,7 @@ Options -Indexes
 
 # Skjul driftsmetadata, låser og README i webroot
 <IfModule mod_authz_core.c>
-  <FilesMatch "(?i)^(README\.md|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
+  <FilesMatch "(?i)^(README\.md|nginx-sis-pwa\.conf|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
     Require all denied
   </FilesMatch>
   <FilesMatch "^\.">
@@ -11,7 +11,7 @@ Options -Indexes
   </FilesMatch>
 </IfModule>
 <IfModule !mod_authz_core.c>
-  <FilesMatch "(?i)^(README\.md|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
+  <FilesMatch "(?i)^(README\.md|nginx-sis-pwa\.conf|\.last-sha|\.last-check|\.server-sha|\.server-check|\.sync\.lock|\.server\.lock)$">
     Order allow,deny
     Deny from all
   </FilesMatch>
