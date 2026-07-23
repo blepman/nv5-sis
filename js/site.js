@@ -637,7 +637,9 @@
         }
         track.style.transform = "translate3d(0, " + -offset + "px, 0)";
         var visual = offset < 0 ? 0 : offset;
-        setActive(Math.floor(visual / step) % items.length);
+        var active =
+          Math.floor((visual + step * ACTIVE_LEAD) / step) % items.length;
+        setActive(active);
       }
 
       rafId = window.requestAnimationFrame(frame);
