@@ -74,6 +74,17 @@ add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "no-referrer" always;
 add_header X-Frame-Options "DENY" always;
 
+# PWA/start_url skal lande på /sis/, ikke /sis/content/
+location = /sis/content {
+    return 302 /sis/;
+}
+location = /sis/content/ {
+    return 302 /sis/;
+}
+location = /sis/content/index.html {
+    return 302 /sis/;
+}
+
 location ~* ^/sis/(README\.md|\.(last-sha|last-check|server-sha|server-check|sync\.lock|server\.lock))$ {
     deny all;
     return 404;
