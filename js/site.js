@@ -11,7 +11,11 @@
     updated: document.getElementById("updated"),
     boards: document.getElementById("boards"),
     status: document.getElementById("status"),
+    menuToggle: document.getElementById("menuToggle"),
+    menuPanel: document.getElementById("menuPanel"),
     settingsOpen: document.getElementById("settingsOpen"),
+    syncServer: document.getElementById("syncServer"),
+    syncBoard: document.getElementById("syncBoard"),
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
@@ -937,7 +941,7 @@
     // Kun full sync/reload når GitHub-intervallet endres (PHP leser cookie)
     if (settings.githubCheckIntervalSeconds !== prevGithub) {
       var url = new URL(window.location.href);
-      url.searchParams.set("sync", "1");
+      url.searchParams.set("sync", "main");
       window.location.replace(url.toString());
       return;
     }
@@ -1168,8 +1172,68 @@
     els.stopSearch.value = "";
   }
 
+  function setMenuOpen(open) {
+    if (!els.menuToggle || !els.menuPanel) {
+      return;
+    }
+    els.menuPanel.hidden = !open;
+    els.menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function closeMenu() {
+    setMenuOpen(false);
+  }
+
+  function forceGithubSync(target) {
+    closeMenu();
+    var syncTarget = target === "server" || target === "main" ? target : "both";
+    els.updated.textContent =
+      syncTarget === "server"
+        ? "Bygger siden på nytt…"
+        : syncTarget === "main"
+          ? "Bygger tavlen på nytt…"
+          : "Oppdaterer fra GitHub…";
+    var url = new URL(window.location.href);
+    url.searchParams.set("sync", syncTarget);
+    window.location.replace(url.toString());
+  }
+
   function bindSettings() {
-    els.settingsOpen.addEventListener("click", openSettings);
+    if (els.menuToggle) {
+      els.menuToggle.addEventListener("click", function (event) {
+        event.stopPropagation();
+        setMenuOpen(els.menuPanel.hidden);
+      });
+    }
+    if (els.syncServer) {
+      els.syncServer.addEventListener("click", function () {
+        forceGithubSync("server");
+      });
+    }
+    if (els.syncBoard) {
+      els.syncBoard.addEventListener("click", function () {
+        forceGithubSync("main");
+      });
+    }
+    document.addEventListener("click", function (event) {
+      if (!els.menuPanel || els.menuPanel.hidden) {
+        return;
+      }
+      if (event.target.closest("#appMenu")) {
+        return;
+      }
+      closeMenu();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+
+    els.settingsOpen.addEventListener("click", function () {
+      closeMenu();
+      openSettings();
+    });
     els.settingsSave.addEventListener("click", function (event) {
       event.preventDefault();
       applySettings();
@@ -1252,10 +1316,10 @@
     // Hold cookie synket så PHP kjenner intervallet
     writeGithubIntervalCookie(settings.githubCheckIntervalSeconds);
     // Rydd bort sync fra adresselinjen etter sync
-    if (new URL(window.location.href).searchParams.has("sync")) {
-      var clean = new URL(window.location.href);
-      clean.searchParams.delete("sync");
-      window.history.replaceState({}, "", clean.toString());
+    var bootUrl = new URL(window.location.href);
+    if (bootUrl.searchParams.has("sync")) {
+      bootUrl.searchParams.delete("sync");
+      window.history.replaceState({}, "", bootUrl.toString());
     }
 
     updateBoardTitle();

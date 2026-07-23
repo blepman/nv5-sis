@@ -43,15 +43,40 @@
           <h1 class="board__stop" id="boardTitle">Avganger</h1>
         </div>
         <div class="board__header-right">
-          <button
-            type="button"
-            class="settings-btn"
-            id="settingsOpen"
-            aria-haspopup="dialog"
-            aria-controls="settingsDialog"
-          >
-            Innstillinger
-          </button>
+          <div class="menu" id="appMenu">
+            <button
+              type="button"
+              class="menu__toggle"
+              id="menuToggle"
+              aria-label="Meny"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="menuPanel"
+            >
+              <span class="menu__icon" aria-hidden="true"></span>
+            </button>
+            <div class="menu__panel" id="menuPanel" hidden>
+              <button type="button" class="menu__item" id="settingsOpen">
+                Innstillinger
+              </button>
+              <button
+                type="button"
+                class="menu__item"
+                id="syncServer"
+                title="Henter PHP/serverfiler fra GitHub-branchen server"
+              >
+                Bygg siden på nytt
+              </button>
+              <button
+                type="button"
+                class="menu__item"
+                id="syncBoard"
+                title="Henter HTML/CSS/JS fra GitHub-branchen main"
+              >
+                Bygg tavlen på nytt
+              </button>
+            </div>
+          </div>
           <div class="board__clock" aria-live="polite">
             <time id="clock" datetime="">--:--:--</time>
             <p class="board__updated" id="updated">Oppdaterer…</p>
@@ -95,7 +120,7 @@
         </label>
 
         <label class="settings__field">
-          <span>Sjekk ny sidekode fra GitHub</span>
+          <span>Sjekk tavlekode fra GitHub (main)</span>
           <select id="githubCheckInterval">
             <option value="0">Ved hvert besøk</option>
             <option value="60">Hvert minutt</option>
@@ -104,7 +129,10 @@
             <option value="1800">Hvert 30. minutt</option>
             <option value="3600">Hver time</option>
           </select>
-          <small>Styrer hvor ofte serveren henter oppdateringer fra main</small>
+          <small>
+            Styrer hvor ofte tavlen (HTML/CSS/JS) hentes fra main. Serverfiler
+            sjekkes separat hver time, eller via «Bygg siden på nytt».
+          </small>
         </label>
 
         <section class="settings__section" aria-labelledby="selectedQuaysTitle">

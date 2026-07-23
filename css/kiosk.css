@@ -118,23 +118,96 @@ body {
   gap: 0.45rem;
 }
 
-.settings-btn {
+.menu {
+  position: relative;
+}
+
+.menu__toggle {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-lift) 90%, transparent);
   color: var(--text);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.35rem 0.65rem;
   border-radius: 0.3rem;
   cursor: pointer;
 }
 
-.settings-btn:hover,
-.settings-btn:focus-visible {
-  color: var(--text);
+.menu__toggle:hover,
+.menu__toggle:focus-visible,
+.menu__toggle[aria-expanded="true"] {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.menu__icon,
+.menu__icon::before,
+.menu__icon::after {
+  display: block;
+  width: 1.05rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.menu__icon {
+  position: relative;
+}
+
+.menu__icon::before,
+.menu__icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.menu__icon::before {
+  top: -6px;
+}
+
+.menu__icon::after {
+  top: 6px;
+}
+
+.menu__panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 20;
+  min-width: 12.5rem;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #121a2b;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.35);
+}
+
+.menu__panel[hidden] {
+  display: none;
+}
+
+.menu__item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .board__clock {
