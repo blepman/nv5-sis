@@ -44,6 +44,8 @@ Audit-logg: `sync-audit.log` i state-mappen (IP + allow/deny).
 - Sync bruker fil-låser i **state-mappe utenfor webroot** (`sys_get_temp_dir()/nv5-sis-…`)
 - Ved første kjøring flyttes gamle `.last-*` / `.server-*` ut av `/sis/` og slettes fra webroot
 - `README.md` / `.gitignore` speiles **ikke** til webroot
+- Påkrevde serverfiler som alltid speiles: `index.php`, `.htaccess` (mangler de, kjøres sync på nytt selv om SHA er uendret)
+- `?sync=server` tvinger alltid ny speiling av serverfilene (ikke bare SHA-sjekk)
 - `content/` overskrives ikke av server-speil
 - Hvis sync allerede kjører, vises cached tavle
 - `main` → `content/` kopierer kun allowlistede filtyper (`html`, `css`, `js`, `woff2`, `png`, `webmanifest`, `json`); symlinks og path-traversal i zip avvises
