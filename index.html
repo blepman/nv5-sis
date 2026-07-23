@@ -85,6 +85,15 @@
         <div id="boards" class="boards" aria-live="polite"></div>
         <p class="board__status" id="status" hidden></p>
       </main>
+
+      <footer class="board__footer" id="buildFooter" hidden>
+        <span class="board__footer-item"
+          >server <code id="buildServerSha">----</code></span
+        >
+        <span class="board__footer-item"
+          >main <code id="buildBoardSha">----</code></span
+        >
+      </footer>
     </div>
 
     <dialog
@@ -129,6 +138,10 @@
           <label class="settings__check">
             <input type="checkbox" id="showServiceRuns" checked />
             <span>Vis tjenestekjøring (ellers skjules)</span>
+          </label>
+          <label class="settings__check">
+            <input type="checkbox" id="showBuildInfo" checked />
+            <span>Vis commit-hash i footer (server / main)</span>
           </label>
         </fieldset>
 
