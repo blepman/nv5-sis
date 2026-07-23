@@ -15,6 +15,7 @@
     settingsOpen: document.getElementById("settingsOpen"),
     syncServer: document.getElementById("syncServer"),
     syncBoard: document.getElementById("syncBoard"),
+    clearLocal: document.getElementById("clearLocal"),
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
@@ -71,16 +72,19 @@
     return null;
   }
 
+  function githubCookiePath() {
+    return location.pathname.indexOf("/sis") === 0 ? "/sis/" : "/";
+  }
+
   function writeGithubIntervalCookie(seconds) {
     var name = defaults.githubIntervalCookie || "nv5_github_interval";
     var maxAge = 60 * 60 * 24 * 365;
-    var path = location.pathname.indexOf("/sis") === 0 ? "/sis/" : "/";
     var cookie =
       name +
       "=" +
       encodeURIComponent(String(seconds)) +
       "; path=" +
-      path +
+      githubCookiePath() +
       "; max-age=" +
       maxAge +
       "; SameSite=Lax";
@@ -88,6 +92,49 @@
       cookie += "; Secure";
     }
     document.cookie = cookie;
+  }
+
+  function clearGithubIntervalCookie() {
+    var name = defaults.githubIntervalCookie || "nv5_github_interval";
+    var paths = [githubCookiePath(), "/", "/sis/"];
+    paths.forEach(function (path) {
+      var cookie = name + "=; path=" + path + "; max-age=0; SameSite=Lax";
+      if (location.protocol === "https:") {
+        cookie += "; Secure";
+      }
+      document.cookie = cookie;
+    });
+  }
+
+  function clearLocalData() {
+    var confirmed = window.confirm(
+      "Slette all lokal lagring for NV5-SIS?\n\n" +
+        "Innstillinger, holdeplasser og andre lagrede valg i denne nettleseren nullstilles."
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      localStorage.removeItem(defaults.storageKey);
+      // Rydd eventuelle andre nv5-nøkler også
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf("nv5") === 0) {
+          keys.push(key);
+        }
+      }
+      keys.forEach(function (key) {
+        localStorage.removeItem(key);
+      });
+    } catch (error) {
+      console.warn("Kunne ikke tømme localStorage", error);
+    }
+    clearGithubIntervalCookie();
+    closeMenu();
+    var url = new URL(window.location.href);
+    url.searchParams.delete("sync");
+    window.location.replace(url.toString());
   }
 
   function boolSetting(value, fallback) {
@@ -1378,6 +1425,11 @@
     if (els.syncBoard) {
       els.syncBoard.addEventListener("click", function () {
         forceGithubSync("main");
+      });
+    }
+    if (els.clearLocal) {
+      els.clearLocal.addEventListener("click", function () {
+        clearLocalData();
       });
     }
     // Lukk meny ved klikk utenfor (etter denne event-runden, så toggle ikke lukker med en gang)

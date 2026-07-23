@@ -212,6 +212,15 @@ body {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+.menu__item--danger {
+  color: var(--late);
+}
+
+.menu__item--danger:hover,
+.menu__item--danger:focus-visible {
+  background: color-mix(in srgb, var(--late) 16%, transparent);
+}
+
 .board__clock {
   text-align: left;
 }
@@ -328,7 +337,6 @@ body {
 
 .departure--ticker {
   align-items: center;
-  grid-template-columns: 4.5rem 1fr 6.5rem;
 }
 
 .departure--cancelled {
