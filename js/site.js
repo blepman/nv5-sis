@@ -321,15 +321,63 @@
     return (progress && progress.label) || "";
   }
 
+  function journeyProgressKey(departure) {
+    if (
+      !settings.showJourneyProgress ||
+      !window.NV5Entur ||
+      typeof window.NV5Entur.journeyProgressKey !== "function"
+    ) {
+      return "";
+    }
+    return window.NV5Entur.journeyProgressKey(departure) || "";
+  }
+
   function renderProgressHtml(progress) {
     if (!progress || !progress.label) {
       return "";
     }
     return (
-      '<div class="departure__progress">' +
+      '<div class="departure__progress' +
+      (progress.mode === "expected" ? " departure__progress--expected" : "") +
+      '"' +
+      (progress.mode
+        ? ' data-progress-mode="' + escapeHtml(progress.mode) + '"'
+        : "") +
+      (progress.place
+        ? ' data-progress-place="' + escapeHtml(progress.place) + '"'
+        : "") +
+      (progress.at
+        ? ' data-progress-at="' + escapeHtml(progress.at.toISOString()) + '"'
+        : "") +
+      ">" +
       escapeHtml(progress.label) +
       "</div>"
     );
+  }
+
+  function patchProgressLabels(now) {
+    var nodes = els.boards.querySelectorAll(
+      '.departure__progress[data-progress-mode="seen"]'
+    );
+    if (!nodes.length) {
+      return;
+    }
+    var formatRel =
+      window.NV5Entur && typeof window.NV5Entur.formatRelativeSeen === "function"
+        ? window.NV5Entur.formatRelativeSeen
+        : null;
+    nodes.forEach(function (node) {
+      var place = node.getAttribute("data-progress-place") || "";
+      var atRaw = node.getAttribute("data-progress-at");
+      var at = atRaw ? new Date(atRaw) : null;
+      if (!place || !at || isNaN(at.getTime()) || !formatRel) {
+        return;
+      }
+      var labeled = "Sist sett " + place + " · " + formatRel(at, now);
+      if (node.textContent !== labeled) {
+        node.textContent = labeled;
+      }
+    });
   }
 
   function delaySecondsOf(departure) {
@@ -839,7 +887,7 @@
               String(delaySecondsOf(dep)),
               delayTimeClass(dep),
               dep.serviceRun ? "t" : "",
-              journeyProgressLabel(dep, now),
+              journeyProgressKey(dep),
               dep.occupancyStatus || "",
               entry.stale ? "s" : "f",
             ].join(",");
@@ -937,6 +985,7 @@
       els.boards.children.length === entries.length
     ) {
       patchSyncStatus(entries);
+      patchProgressLabels(now || new Date());
       return;
     }
 

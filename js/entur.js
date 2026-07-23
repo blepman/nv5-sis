@@ -175,7 +175,7 @@
     };
   }
 
-  function progressFromActual(stops, boardStopName) {
+  function progressFromActual(stops) {
     var idx = -1;
     for (var i = 0; i < stops.length; i++) {
       if (stops[i].actualArrival || stops[i].actualDeparture) {
@@ -186,23 +186,15 @@
       return null;
     }
     var stop = stops[idx];
-    if (stop.actualDeparture) {
-      var next = stops[idx + 1];
-      var nextName = (next && next.name) || boardStopName || "";
-      if (nextName) {
-        return {
-          state: "towards",
-          place: nextName,
-          label: "Mot " + nextName,
-        };
-      }
-      return {
-        state: "passed",
-        place: stop.name,
-        label: "Passerte " + stop.name,
-      };
+    var at = stop.actualDeparture || stop.actualArrival;
+    if (!stop.name || !at) {
+      return null;
     }
-    return { state: "at", place: stop.name, label: "På " + stop.name };
+    return {
+      mode: "seen",
+      place: stop.name,
+      at: at,
+    };
   }
 
   function progressFromExpected(stops, boardStopName, nowMs) {
@@ -211,11 +203,7 @@
     }
     var firstDep = stops[0].expectedDeparture || stops[0].expectedArrival;
     if (firstDep && nowMs + PROGRESS_LEAD_MS < firstDep.getTime()) {
-      return {
-        state: "origin",
-        place: stops[0].name,
-        label: "Fra " + stops[0].name,
-      };
+      return { mode: "expected", place: stops[0].name };
     }
 
     var idx = -1;
@@ -231,52 +219,66 @@
     }
 
     if (idx < 0) {
-      return {
-        state: "origin",
-        place: stops[0].name,
-        label: "Fra " + stops[0].name,
-      };
+      return { mode: "expected", place: stops[0].name };
     }
 
     var stop = stops[idx];
-    var depAt = stop.expectedDeparture || stop.expectedArrival;
-    var arrAt = stop.expectedArrival || stop.expectedDeparture;
-    var next = stops[idx + 1];
-    var nextName = (next && next.name) || boardStopName || "";
-
-    // Ankommet, men ikke forventet avgått ennå
-    if (
-      arrAt &&
-      arrAt.getTime() <= nowMs &&
-      depAt &&
-      nowMs < depAt.getTime()
-    ) {
-      return { state: "at", place: stop.name, label: "På " + stop.name };
+    if (!stop.name) {
+      return boardStopName
+        ? { mode: "expected", place: boardStopName }
+        : null;
     }
+    return { mode: "expected", place: stop.name };
+  }
 
-    if (depAt && depAt.getTime() <= nowMs) {
-      if (nextName) {
-        return {
-          state: "towards",
-          place: nextName,
-          label: "Mot " + nextName,
-        };
-      }
+  function formatRelativeSeen(at, now) {
+    if (!at || !now) {
+      return "";
+    }
+    var sec = Math.max(
+      0,
+      Math.round((now.getTime() - at.getTime()) / 1000)
+    );
+    if (sec < 20) {
+      return "nå";
+    }
+    if (sec < 60) {
+      return "for " + sec + " sek siden";
+    }
+    var min = Math.round(sec / 60);
+    if (min < 60) {
+      return min === 1 ? "for 1 min siden" : "for " + min + " min siden";
+    }
+    var hours = Math.round(min / 60);
+    return hours === 1 ? "for 1 time siden" : "for " + hours + " timer siden";
+  }
+
+  function withProgressLabel(progress, now) {
+    if (!progress || !progress.place) {
+      return null;
+    }
+    var nowDate = now instanceof Date ? now : new Date();
+    if (progress.mode === "seen" && progress.at) {
       return {
-        state: "passed",
-        place: stop.name,
-        label: "Passerte " + stop.name,
+        mode: "seen",
+        place: progress.place,
+        at: progress.at,
+        label:
+          "Sist sett " +
+          progress.place +
+          " · " +
+          formatRelativeSeen(progress.at, nowDate),
       };
     }
-
-    if (nextName) {
+    if (progress.mode === "expected") {
       return {
-        state: "towards",
-        place: nextName,
-        label: "Mot " + nextName,
+        mode: "expected",
+        place: progress.place,
+        at: null,
+        label: "Forventet ved " + progress.place,
       };
     }
-    return { state: "at", place: stop.name, label: "På " + stop.name };
+    return null;
   }
 
   function deriveJourneyProgress(departure, now) {
@@ -289,7 +291,6 @@
     var stops = (departure.previousStops || []).slice();
     var first = departure.firstStop;
     if (first && (!stops.length || stops[0].name !== first.name)) {
-      // previous skal allerede inneholde first; behold first som fallback
       if (!stops.length) {
         stops = [first];
       }
@@ -306,30 +307,69 @@
       (first && (first.expectedDeparture || first.expectedArrival)) ||
       stops[0].expectedDeparture ||
       stops[0].expectedArrival;
-    var hasActual = stops.some(function (stop) {
-      return stop.actualArrival || stop.actualDeparture;
-    });
-
-    // Ikke gjett posisjon for avganger langt frem i tid før turen er i gang
-    if (!hasActual) {
-      var journeyStarted =
-        firstDep && nowMs + PROGRESS_LEAD_MS >= firstDep.getTime();
-      var soonEnough =
-        boardTime && boardTime.getTime() - nowMs <= PROGRESS_UPCOMING_MS;
-      if (!journeyStarted && !soonEnough) {
-        return null;
-      }
+    var seen = progressFromActual(stops);
+    if (seen) {
+      return withProgressLabel(seen, nowDate);
     }
 
-    return (
-      progressFromActual(stops, boardStopName) ||
-      progressFromExpected(stops, boardStopName, nowMs)
+    var journeyStarted =
+      firstDep && nowMs + PROGRESS_LEAD_MS >= firstDep.getTime();
+    var soonEnough =
+      boardTime && boardTime.getTime() - nowMs <= PROGRESS_UPCOMING_MS;
+    if (!journeyStarted && !soonEnough) {
+      return null;
+    }
+
+    return withProgressLabel(
+      progressFromExpected(stops, boardStopName, nowMs),
+      nowDate
     );
   }
 
   function journeyProgressLabel(departure, now) {
     var progress = deriveJourneyProgress(departure, now);
     return (progress && progress.label) || "";
+  }
+
+  function journeyProgressKey(departure) {
+    if (!departure || departure.cancelled || departure.serviceRun) {
+      return "";
+    }
+    var stops = (departure.previousStops || []).slice();
+    var first = departure.firstStop;
+    if (!stops.length && first) {
+      stops = [first];
+    }
+    if (!stops.length) {
+      return "";
+    }
+    var seen = progressFromActual(stops);
+    if (seen) {
+      return (
+        "seen:" +
+        seen.place +
+        ":" +
+        (seen.at ? seen.at.toISOString() : "")
+      );
+    }
+    var nowMs = Date.now();
+    var boardTime = departure.expected;
+    var firstDep =
+      (first && (first.expectedDeparture || first.expectedArrival)) ||
+      (stops[0] && (stops[0].expectedDeparture || stops[0].expectedArrival));
+    var journeyStarted =
+      firstDep && nowMs + PROGRESS_LEAD_MS >= firstDep.getTime();
+    var soonEnough =
+      boardTime && boardTime.getTime() - nowMs <= PROGRESS_UPCOMING_MS;
+    if (!journeyStarted && !soonEnough) {
+      return "";
+    }
+    var expected = progressFromExpected(
+      stops,
+      departure.quayName || "",
+      nowMs
+    );
+    return expected && expected.place ? "expected:" + expected.place : "";
   }
 
   async function fetchWithTimeout(url, options, timeoutMs) {
@@ -665,6 +705,8 @@
     fetchPlaceLines: fetchPlaceLines,
     deriveJourneyProgress: deriveJourneyProgress,
     journeyProgressLabel: journeyProgressLabel,
+    journeyProgressKey: journeyProgressKey,
+    formatRelativeSeen: formatRelativeSeen,
     modeLabel: modeLabel,
     occupancyLabel: occupancyLabel,
     isServiceRun: isServiceRun,

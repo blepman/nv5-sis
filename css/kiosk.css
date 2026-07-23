@@ -470,6 +470,11 @@ body {
   overflow-wrap: anywhere;
 }
 
+.departure__progress--expected {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
