@@ -328,11 +328,10 @@ body {
   grid-template-columns:
     var(--departure-status-width)
     var(--departure-line-size)
-    minmax(0, 1fr)
-    auto;
+    minmax(0, 1fr);
   grid-template-rows: auto;
   column-gap: 0.5rem;
-  row-gap: 0.4rem;
+  row-gap: 0.35rem;
   align-items: start;
   padding: 0.7rem 0.4rem 0.7rem 0.35rem;
   background: color-mix(in srgb, var(--bg-lift) 88%, transparent);
@@ -372,23 +371,54 @@ body {
 }
 
 .departure--ticker {
-  align-items: center;
+  align-items: start;
 }
 
-.departure__time-wrap {
-  grid-column: 4;
-  grid-row: 1;
+/* Venstre skinne: linjenummer + ev. avviksikon tett under */
+.departure__rail {
+  grid-column: 2;
+  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.departure__line-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Øvre sone: dest-innhold + tid midtstilt mot hverandre */
+.departure__main {
+  grid-column: 3;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.departure__dest-wrap {
+  min-width: 0;
+}
+
+.departure__time-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   justify-self: end;
-  align-self: start;
+  align-self: center;
   gap: 0.1rem;
   min-width: 0;
   height: fit-content;
   padding-right: 0.05rem;
-  padding-top: 0.15rem;
 }
 
 .departure__time-stack {
@@ -474,24 +504,6 @@ body {
   visibility: hidden;
 }
 
-.departure__line-wrap {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  align-self: start;
-  min-width: 0;
-  padding-top: 0.05rem;
-}
-
-.departure__dest-wrap {
-  grid-column: 3;
-  grid-row: 1;
-  min-width: 0;
-}
-
 .departure__line {
   display: inline-flex;
   align-items: center;
@@ -548,22 +560,18 @@ body {
 }
 
 .departure__situation {
-  grid-column: 2 / -1;
+  grid-column: 3;
   grid-row: 2;
-  display: grid;
-  grid-template-columns: var(--departure-line-size) minmax(0, 1fr);
-  column-gap: 0.5rem;
-  align-items: start;
   min-width: 0;
+  align-self: start;
+  padding-top: 0.15rem;
 }
 
 .departure__situation-icon {
-  grid-column: 1;
-  justify-self: center;
   box-sizing: border-box;
+  flex: 0 0 auto;
   width: var(--departure-line-size);
   height: var(--departure-line-size);
-  margin-top: 0;
   border-radius: 0.3rem;
   background: #f0c674;
   color: #111;
@@ -579,13 +587,12 @@ body {
 }
 
 .departure__situation-text {
-  grid-column: 2 / -1;
+  display: block;
   min-width: 0;
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  padding-top: 0.15rem;
 }
 
 .visually-hidden {

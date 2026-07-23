@@ -558,6 +558,14 @@
     '<rect x="11" y="17" width="2" height="2" rx="0.35" fill="#f0c674"/>' +
     "</svg>";
 
+  function renderSituationIconHtml() {
+    return (
+      '<span class="departure__situation-icon" aria-hidden="true">' +
+      SITUATION_ICON_SVG +
+      "</span>"
+    );
+  }
+
   function renderSituationHtml(departure, now) {
     var messages = situationMessages(departure);
     if (!messages.length) {
@@ -569,9 +577,6 @@
       '<div class="departure__situation" data-situations="' +
       escapeHtml(JSON.stringify(messages)) +
       '">' +
-      '<span class="departure__situation-icon" aria-hidden="true">' +
-      SITUATION_ICON_SVG +
-      "</span>" +
       '<span class="departure__situation-text">' +
       escapeHtml(current) +
       "</span>" +
@@ -684,7 +689,11 @@
       (hasSituation ? " departure--has-situation" : "") +
       (animate ? " departure--enter" : "") +
       '">' +
+      '<div class="departure__rail">' +
       renderLineBadge(departure) +
+      (hasSituation ? renderSituationIconHtml() : "") +
+      "</div>" +
+      '<div class="departure__main">' +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination">' +
       escapeHtml(departure.destination) +
@@ -700,6 +709,7 @@
       renderProgressHtml(progress) +
       "</div>" +
       renderTimeBlock(timeLabel, delayClass, isNow, delayLabel) +
+      "</div>" +
       renderSituationHtml(departure, now) +
       "</li>"
     );
@@ -757,7 +767,10 @@
       '" data-ticker-sync-dest="' +
       (multiLine || multiDestination ? "1" : "0") +
       '">' +
+      '<div class="departure__rail">' +
       renderLineBadge(first, "data-ticker-line-wrap") +
+      "</div>" +
+      '<div class="departure__main">' +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination" data-ticker-destination>' +
       escapeHtml(destinationLabel) +
@@ -765,6 +778,7 @@
       "</div>" +
       '<div class="departure__time-wrap">' +
       '<span class="departure__ticker" aria-live="off"></span>' +
+      "</div>" +
       "</div>" +
       "</li>"
     );
