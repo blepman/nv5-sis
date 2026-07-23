@@ -476,13 +476,23 @@
     return "Rutetid";
   }
 
+  function setDepartureStatusClass(el, kind) {
+    if (!el) {
+      return;
+    }
+    el.classList.remove(
+      "departure--status-realtime",
+      "departure--status-scheduled",
+      "departure--status-cancelled"
+    );
+    el.classList.add("departure--status-" + (kind || "scheduled"));
+  }
+
   function renderLineBadge(departure, attrs) {
     var kind = lineStatusKind(departure);
     var extra = attrs ? " " + attrs : "";
     return (
-      '<span class="departure__line-wrap departure__line-wrap--' +
-      kind +
-      '"' +
+      '<span class="departure__line-wrap"' +
       extra +
       ">" +
       '<span class="departure__line"' +
@@ -663,9 +673,11 @@
     var delayClass = delayTimeClass(departure);
     var delayLabel = formatDelayLabel(departure);
     var hasSituation = situationMessages(departure).length > 0;
+    var statusKind = lineStatusKind(departure);
 
     return (
-      '<li class="departure' +
+      '<li class="departure departure--status-' +
+      statusKind +
       (departure.cancelled ? " departure--cancelled" : "") +
       (departure.serviceRun ? " departure--service-run" : "") +
       (hasSituation ? " departure--has-situation" : "") +
@@ -735,9 +747,11 @@
       : uniqueDestinations[0] || "Neste avganger";
     var firstDelayClass = items[0].delayClass || "";
     var firstDelayLabel = items[0].delayLabel || "";
+    var firstStatus = items[0].status || "scheduled";
 
     return (
-      '<li class="departure departure--ticker' +
+      '<li class="departure departure--ticker departure--status-' +
+      firstStatus +
       (animate ? " departure--enter" : "") +
       '" data-ticker-items="' +
       escapeHtml(JSON.stringify(items)) +
@@ -841,10 +855,9 @@
       }
       activeIndex = index;
       var item = items[index];
+      setDepartureStatusClass(node, item.status || "scheduled");
       if (lineWrap) {
-        lineWrap.className =
-          "departure__line-wrap departure__line-wrap--" +
-          (item.status || "scheduled");
+        lineWrap.className = "departure__line-wrap";
         lineWrap.setAttribute("data-ticker-line-wrap", "");
       }
       if (lineSr && item.statusLabel) {
