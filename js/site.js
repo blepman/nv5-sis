@@ -461,7 +461,6 @@
         cancelled: Boolean(dep.cancelled),
         delayClass: delayClass,
         now: time === "Nå",
-        label: multiLine ? (dep.line || "–") + " · " + time : time,
       };
     });
     var destinationLabel = multiDestination
@@ -470,12 +469,11 @@
 
     return (
       '<li class="departure departure--ticker' +
-      (multiLine ? " departure--ticker-multiline" : "") +
       (animate ? " departure--enter" : "") +
       '" data-ticker-items="' +
       escapeHtml(JSON.stringify(items)) +
-      '" data-ticker-multidest="' +
-      (multiDestination ? "1" : "0") +
+      '" data-ticker-sync-dest="' +
+      (multiLine || multiDestination ? "1" : "0") +
       '">' +
       '<span class="departure__line" data-ticker-line' +
       lineStyleAttr(first) +
@@ -527,7 +525,7 @@
     var meta = node.querySelector("[data-ticker-meta]");
     var lineEl = node.querySelector("[data-ticker-line]");
     var destEl = node.querySelector("[data-ticker-destination]");
-    var multiDestination = node.getAttribute("data-ticker-multidest") === "1";
+    var syncDestination = node.getAttribute("data-ticker-sync-dest") === "1";
     if (!slot) {
       return;
     }
@@ -538,15 +536,12 @@
     sequence.forEach(function (item, index) {
       var el = document.createElement("span");
       el.className = "departure__ticker-item";
-      if (item.line && item.label && item.label !== item.time) {
-        el.className += " departure__ticker-item--with-line";
-      }
       if (item.delayClass) {
         el.className += " " + item.delayClass;
       } else if (item.now) {
         el.className += " is-now";
       }
-      el.textContent = item.label || item.time;
+      el.textContent = item.time;
       el.setAttribute("data-item-index", String(index % items.length));
       track.appendChild(el);
     });
@@ -561,6 +556,9 @@
     var started = false;
     var step = 0;
     var viewHeight = 0;
+    // Bytt linje/dest når neste tid er i ferd med å dukke opp nederst,
+    // ikke når forrige tid er på vei ut øverst.
+    var ACTIVE_LEAD = 0.82;
 
     function setActive(index) {
       if (index === activeIndex || !items[index]) {
@@ -582,7 +580,7 @@
           lineEl.style.color = "";
         }
       }
-      if (destEl && multiDestination && item.destination) {
+      if (destEl && syncDestination && item.destination) {
         destEl.textContent = item.destination;
       }
       slot.classList.remove("is-now", "is-delay-warn", "is-delay-late");
@@ -639,7 +637,9 @@
         }
         track.style.transform = "translate3d(0, " + -offset + "px, 0)";
         var visual = offset < 0 ? 0 : offset;
-        setActive(Math.floor(visual / step) % items.length);
+        var active =
+          Math.floor((visual + step * ACTIVE_LEAD) / step) % items.length;
+        setActive(active);
       }
 
       rafId = window.requestAnimationFrame(frame);
