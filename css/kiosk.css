@@ -419,14 +419,14 @@ body {
   min-width: 0;
 }
 
-/* Øvre sone: dest-innhold + tid. Gulv = typisk 3 tekstlinjer; JS equaliserer til maks. */
+/* Øvre sone: tekst i flukt med topp av linjenummer; JS equaliserer featured-rader. */
 .departure__main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 0.5rem;
-  align-items: center;
+  align-items: start;
   min-width: 0;
-  min-height: 5.25rem;
+  min-height: 4.1rem;
 }
 
 .departure__dest-wrap {
@@ -437,9 +437,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   justify-self: end;
-  align-self: center;
+  align-self: start;
   gap: 0.1rem;
   min-width: 0;
   height: fit-content;
@@ -589,7 +589,7 @@ body {
 
 .departure__situation {
   display: flex;
-  align-items: center;
+  align-items: start;
   min-width: 0;
 }
 
@@ -1021,7 +1021,7 @@ body {
   }
 
   .departure__main {
-    min-height: 4.6rem;
+    min-height: 3.6rem;
   }
 
   .departure__line {
