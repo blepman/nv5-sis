@@ -366,6 +366,10 @@ body {
   gap: 0;
 }
 
+.departure--ticker-multiline .departure__ticker {
+  min-width: 7.5rem;
+}
+
 .departure__ticker-item {
   position: static;
   display: flex;
@@ -378,6 +382,11 @@ body {
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.departure__ticker-item--with-line {
+  font-size: clamp(1.05rem, 4.2vw, 1.4rem);
+  letter-spacing: -0.01em;
 }
 
 .departure__line {
