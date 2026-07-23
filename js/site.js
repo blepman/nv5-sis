@@ -720,10 +720,7 @@
       if (item.situation) {
         item.situation.style.minHeight = target + "px";
       }
-      if (item.ticker) {
-        item.ticker.style.height = target + "px";
-        item.ticker.style.maxHeight = target + "px";
-      }
+      // Ticker beholder kompakt CSS-høyde midtstilt som Nå/min — ikke strekk til target
     }
 
     featured.forEach(applySize);
