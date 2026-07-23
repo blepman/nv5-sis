@@ -373,7 +373,9 @@
       if (!place || !at || isNaN(at.getTime()) || !formatRel) {
         return;
       }
-      var labeled = "Sist sett " + place + " · " + formatRel(at, now);
+      var seenRel = formatRel(at, now);
+      var labeled =
+        "Sist sett " + place + (seenRel ? " (" + seenRel + ")" : "");
       if (node.textContent !== labeled) {
         node.textContent = labeled;
       }

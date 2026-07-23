@@ -239,18 +239,10 @@
       0,
       Math.round((now.getTime() - at.getTime()) / 1000)
     );
-    if (sec < 20) {
+    if (sec < 60) {
       return "nå";
     }
-    if (sec < 60) {
-      return "for " + sec + " sek siden";
-    }
-    var min = Math.round(sec / 60);
-    if (min < 60) {
-      return min === 1 ? "for 1 min siden" : "for " + min + " min siden";
-    }
-    var hours = Math.round(min / 60);
-    return hours === 1 ? "for 1 time siden" : "for " + hours + " timer siden";
+    return String(Math.round(sec / 60));
   }
 
   function withProgressLabel(progress, now) {
@@ -259,6 +251,7 @@
     }
     var nowDate = now instanceof Date ? now : new Date();
     if (progress.mode === "seen" && progress.at) {
+      var seenRel = formatRelativeSeen(progress.at, nowDate);
       return {
         mode: "seen",
         place: progress.place,
@@ -266,8 +259,7 @@
         label:
           "Sist sett " +
           progress.place +
-          " · " +
-          formatRelativeSeen(progress.at, nowDate),
+          (seenRel ? " (" + seenRel + ")" : ""),
       };
     }
     if (progress.mode === "expected") {
