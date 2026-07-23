@@ -512,6 +512,89 @@
     return parts.join(" · ");
   }
 
+  function situationMessages(departure) {
+    if (!departure || departure.serviceRun) {
+      return [];
+    }
+    var list = departure.situations || [];
+    var out = [];
+    var seen = Object.create(null);
+    list.forEach(function (msg) {
+      var text = String(msg || "").trim();
+      if (!text || seen[text]) {
+        return;
+      }
+      seen[text] = true;
+      out.push(text);
+    });
+    return out;
+  }
+
+  var SITUATION_ROTATE_MS = 15000;
+
+  function situationIndex(count, now) {
+    if (count <= 1) {
+      return 0;
+    }
+    var t = now instanceof Date ? now.getTime() : Date.now();
+    return Math.floor(t / SITUATION_ROTATE_MS) % count;
+  }
+
+  var SITUATION_ICON_SVG =
+    '<svg viewBox="0 0 24 24" width="14" height="14" focusable="false" aria-hidden="true">' +
+    '<path fill="#111" d="M12 3.1L22.6 21.4H1.4L12 3.1z"/>' +
+    '<rect x="11" y="9.2" width="2" height="6.2" rx="0.35" fill="#f0c674"/>' +
+    '<rect x="11" y="17" width="2" height="2" rx="0.35" fill="#f0c674"/>' +
+    "</svg>";
+
+  function renderSituationHtml(departure, now) {
+    var messages = situationMessages(departure);
+    if (!messages.length) {
+      return "";
+    }
+    var idx = situationIndex(messages.length, now || new Date());
+    var current = messages[idx] || messages[0];
+    return (
+      '<div class="departure__situation" data-situations="' +
+      escapeHtml(JSON.stringify(messages)) +
+      '">' +
+      '<span class="departure__situation-icon" aria-hidden="true">' +
+      SITUATION_ICON_SVG +
+      "</span>" +
+      '<span class="departure__situation-text">' +
+      escapeHtml(current) +
+      "</span>" +
+      "</div>"
+    );
+  }
+
+  function patchSituations(now) {
+    var nodes = els.boards.querySelectorAll(
+      ".departure__situation[data-situations]"
+    );
+    if (!nodes.length) {
+      return;
+    }
+    var at = now || new Date();
+    nodes.forEach(function (node) {
+      var raw = node.getAttribute("data-situations");
+      var messages;
+      try {
+        messages = JSON.parse(raw || "[]");
+      } catch (err) {
+        return;
+      }
+      if (!Array.isArray(messages) || !messages.length) {
+        return;
+      }
+      var text = messages[situationIndex(messages.length, at)] || messages[0];
+      var textEl = node.querySelector(".departure__situation-text");
+      if (textEl && textEl.textContent !== text) {
+        textEl.textContent = text;
+      }
+    });
+  }
+
   function departureDirection(departure, includeDirection) {
     if (!includeDirection || !departure.quayDescription) {
       return "";
@@ -575,11 +658,6 @@
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
     var meta = departureMeta(departure);
-    if (departure.situations[0] && !departure.serviceRun) {
-      meta = meta
-        ? meta + " · " + departure.situations[0]
-        : departure.situations[0];
-    }
     var direction = departureDirection(departure, includeDirection);
     var progress = journeyProgress(departure, now);
     var delayClass = delayTimeClass(departure);
@@ -607,6 +685,7 @@
       renderProgressHtml(progress) +
       "</div>" +
       renderTimeBlock(timeLabel, delayClass, isNow, delayLabel) +
+      renderSituationHtml(departure, now) +
       "</li>"
     );
   }
@@ -954,6 +1033,7 @@
               dep.serviceRun ? "t" : "",
               journeyProgressKey(dep),
               dep.occupancyStatus || "",
+              situationMessages(dep).join("|"),
               entry.stale ? "s" : "f",
             ].join(",");
           })
@@ -1051,6 +1131,7 @@
     ) {
       patchSyncStatus(entries);
       patchProgressLabels(now || new Date());
+      patchSituations(now || new Date());
       return;
     }
 

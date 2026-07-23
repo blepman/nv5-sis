@@ -481,6 +481,41 @@ body {
   font-weight: 500;
 }
 
+.departure__situation {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  min-width: 0;
+}
+
+.departure__situation-icon {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.08rem;
+  border-radius: 0.2rem;
+  background: #f0c674;
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.departure__situation-icon svg {
+  display: block;
+}
+
+.departure__situation-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
