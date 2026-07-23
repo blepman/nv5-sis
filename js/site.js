@@ -57,7 +57,17 @@
     if (!isFinite(seconds) || seconds < 0) {
       return defaults.githubCheckIntervalSeconds || 300;
     }
-    return Math.min(86400, Math.round(seconds));
+    // Minimum 60s — bruk ?sync= for umiddelbar sjekk
+    return Math.min(86400, Math.max(60, Math.round(seconds)));
+  }
+
+  /** Tillat kun #rgb / #rrggbb fra Entur før style-bruk. */
+  function safeCssColor(value) {
+    var raw = String(value || "").trim();
+    if (/^#[0-9a-fA-F]{3}$/.test(raw) || /^#[0-9a-fA-F]{6}$/.test(raw)) {
+      return raw;
+    }
+    return "";
   }
 
   function readGithubIntervalCookie() {
@@ -398,14 +408,16 @@
   }
 
   function lineStyleAttr(departure) {
-    if (!departure.colour) {
+    var bg = safeCssColor(departure.colour);
+    if (!bg) {
       return "";
     }
+    var fg = safeCssColor(departure.textColour) || "#fff";
     return (
       ' style="background:' +
-      escapeHtml(departure.colour) +
+      escapeHtml(bg) +
       ";color:" +
-      escapeHtml(departure.textColour || "#fff") +
+      escapeHtml(fg) +
       '"'
     );
   }
@@ -611,9 +623,10 @@
       }
       if (lineEl && item.line) {
         lineEl.textContent = item.line;
-        if (item.colour) {
-          lineEl.style.background = item.colour;
-          lineEl.style.color = item.textColour || "#fff";
+        var bg = safeCssColor(item.colour);
+        if (bg) {
+          lineEl.style.background = bg;
+          lineEl.style.color = safeCssColor(item.textColour) || "#fff";
         } else {
           lineEl.style.background = "";
           lineEl.style.color = "";
