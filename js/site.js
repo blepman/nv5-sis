@@ -305,15 +305,75 @@
     return formatClock(departure.expected, false);
   }
 
-  function journeyProgressLabel(departure, now) {
+  function journeyProgress(departure, now) {
     if (
       !settings.showJourneyProgress ||
       !window.NV5Entur ||
-      typeof window.NV5Entur.journeyProgressLabel !== "function"
+      typeof window.NV5Entur.deriveJourneyProgress !== "function"
     ) {
+      return null;
+    }
+    return window.NV5Entur.deriveJourneyProgress(departure, now);
+  }
+
+  function journeyProgressLabel(departure, now) {
+    var progress = journeyProgress(departure, now);
+    return (progress && progress.label) || "";
+  }
+
+  function progressIconSvg(kind) {
+    if (kind === "from") {
+      // Høyrepil = Fra
+      return (
+        '<svg class="departure__progress-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+        '<path d="M2.5 8h9.2M8.2 4.2 12.5 8 8.2 11.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        "</svg>"
+      );
+    }
+    if (kind === "to") {
+      // Venstrepil = Mot / til
+      return (
+        '<svg class="departure__progress-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+        '<path d="M13.5 8H4.3M7.8 4.2 3.5 8l4.3 3.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        "</svg>"
+      );
+    }
+    // Punkt = På
+    return (
+      '<svg class="departure__progress-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="3.2" fill="currentColor"/>' +
+      "</svg>"
+    );
+  }
+
+  function renderProgressHtml(progress) {
+    if (!progress || !progress.place) {
       return "";
     }
-    return window.NV5Entur.journeyProgressLabel(departure, now) || "";
+    var kind = "at";
+    if (progress.state === "origin" || progress.state === "passed") {
+      kind = "from";
+    } else if (progress.state === "towards") {
+      kind = "to";
+    }
+    var title = progress.label || progress.place;
+    return (
+      '<div class="departure__progress departure__progress--' +
+      kind +
+      '" title="' +
+      escapeHtml(title) +
+      '">' +
+      '<span class="departure__progress-icon">' +
+      progressIconSvg(kind) +
+      "</span>" +
+      '<span class="departure__progress-place">' +
+      escapeHtml(progress.place) +
+      "</span>" +
+      '<span class="visually-hidden">' +
+      escapeHtml(title) +
+      "</span>" +
+      "</div>"
+    );
   }
 
   function delaySecondsOf(departure) {
@@ -429,7 +489,7 @@
     if (departure.situations[0] && !departure.serviceRun) {
       meta += " · " + departure.situations[0];
     }
-    var progress = journeyProgressLabel(departure, now);
+    var progress = journeyProgress(departure, now);
     var delayClass = delayTimeClass(departure);
     var timeClasses = "departure__time";
     if (delayClass) {
@@ -458,11 +518,7 @@
       '">' +
       escapeHtml(meta) +
       "</div>" +
-      (progress
-        ? '<div class="departure__progress">' +
-          escapeHtml(progress) +
-          "</div>"
-        : "") +
+      renderProgressHtml(progress) +
       "</div>" +
       '<span class="' +
       timeClasses +

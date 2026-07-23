@@ -190,11 +190,19 @@
       var next = stops[idx + 1];
       var nextName = (next && next.name) || boardStopName || "";
       if (nextName) {
-        return { state: "towards", label: "Mot " + nextName };
+        return {
+          state: "towards",
+          place: nextName,
+          label: "Mot " + nextName,
+        };
       }
-      return { state: "passed", label: "Passerte " + stop.name };
+      return {
+        state: "passed",
+        place: stop.name,
+        label: "Passerte " + stop.name,
+      };
     }
-    return { state: "at", label: "På " + stop.name };
+    return { state: "at", place: stop.name, label: "På " + stop.name };
   }
 
   function progressFromExpected(stops, boardStopName, nowMs) {
@@ -203,7 +211,11 @@
     }
     var firstDep = stops[0].expectedDeparture || stops[0].expectedArrival;
     if (firstDep && nowMs + PROGRESS_LEAD_MS < firstDep.getTime()) {
-      return { state: "origin", label: "Fra " + stops[0].name };
+      return {
+        state: "origin",
+        place: stops[0].name,
+        label: "Fra " + stops[0].name,
+      };
     }
 
     var idx = -1;
@@ -219,7 +231,11 @@
     }
 
     if (idx < 0) {
-      return { state: "origin", label: "Fra " + stops[0].name };
+      return {
+        state: "origin",
+        place: stops[0].name,
+        label: "Fra " + stops[0].name,
+      };
     }
 
     var stop = stops[idx];
@@ -235,20 +251,32 @@
       depAt &&
       nowMs < depAt.getTime()
     ) {
-      return { state: "at", label: "På " + stop.name };
+      return { state: "at", place: stop.name, label: "På " + stop.name };
     }
 
     if (depAt && depAt.getTime() <= nowMs) {
       if (nextName) {
-        return { state: "towards", label: "Mot " + nextName };
+        return {
+          state: "towards",
+          place: nextName,
+          label: "Mot " + nextName,
+        };
       }
-      return { state: "passed", label: "Passerte " + stop.name };
+      return {
+        state: "passed",
+        place: stop.name,
+        label: "Passerte " + stop.name,
+      };
     }
 
     if (nextName) {
-      return { state: "towards", label: "Mot " + nextName };
+      return {
+        state: "towards",
+        place: nextName,
+        label: "Mot " + nextName,
+      };
     }
-    return { state: "at", label: "På " + stop.name };
+    return { state: "at", place: stop.name, label: "På " + stop.name };
   }
 
   function deriveJourneyProgress(departure, now) {

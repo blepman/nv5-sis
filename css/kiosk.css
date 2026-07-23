@@ -422,11 +422,46 @@ body {
 }
 
 .departure__progress {
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.25;
+}
+
+.departure__progress-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--muted);
+}
+
+.departure__progress-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.departure__progress-place {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .departure--service-run {
