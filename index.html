@@ -191,6 +191,28 @@
       </form>
     </dialog>
 
+    <dialog
+      class="confirm"
+      id="clearLocalDialog"
+      aria-labelledby="clearLocalTitle"
+    >
+      <form method="dialog" class="confirm__panel">
+        <h2 id="clearLocalTitle">Slette lokal lagring?</h2>
+        <p class="confirm__text">
+          Innstillinger, holdeplasser og andre lagrede valg i denne nettleseren
+          nullstilles.
+        </p>
+        <div class="confirm__actions">
+          <button type="submit" class="confirm__cancel" value="cancel">
+            Avbryt
+          </button>
+          <button type="button" class="confirm__ok" id="clearLocalConfirm">
+            Slett
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <noscript>
       <p>NV5 SIS krever JavaScript for å vise sanntidsavganger.</p>
     </noscript>

@@ -510,8 +510,68 @@ body {
   width: 100%;
 }
 
-.settings::backdrop {
+.settings::backdrop,
+.confirm::backdrop {
   background: rgba(5, 10, 20, 0.72);
+}
+
+.confirm {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  width: 100%;
+}
+
+.confirm__panel {
+  margin: 0;
+  padding: 1.1rem 1.15rem 1rem;
+  background: var(--bg-lift);
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  color: var(--text);
+}
+
+.confirm__panel h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.15rem;
+}
+
+.confirm__text {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.confirm__cancel,
+.confirm__ok {
+  appearance: none;
+  border: 0;
+  border-radius: 0.3rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+.confirm__cancel {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.confirm__ok {
+  background: color-mix(in srgb, var(--late) 28%, var(--bg));
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--late) 55%, var(--line));
 }
 
 .settings__panel {

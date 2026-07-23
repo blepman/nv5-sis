@@ -16,6 +16,8 @@
     syncServer: document.getElementById("syncServer"),
     syncBoard: document.getElementById("syncBoard"),
     clearLocal: document.getElementById("clearLocal"),
+    clearLocalDialog: document.getElementById("clearLocalDialog"),
+    clearLocalConfirm: document.getElementById("clearLocalConfirm"),
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
@@ -106,17 +108,33 @@
     });
   }
 
-  function clearLocalData() {
-    var confirmed = window.confirm(
-      "Slette all lokal lagring for NV5-SIS?\n\n" +
-        "Innstillinger, holdeplasser og andre lagrede valg i denne nettleseren nullstilles."
-    );
-    if (!confirmed) {
+  function openClearLocalDialog() {
+    closeMenu();
+    if (!els.clearLocalDialog) {
+      performClearLocalData();
       return;
     }
+    if (typeof els.clearLocalDialog.showModal === "function") {
+      els.clearLocalDialog.showModal();
+    } else {
+      els.clearLocalDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeClearLocalDialog() {
+    if (!els.clearLocalDialog) {
+      return;
+    }
+    if (typeof els.clearLocalDialog.close === "function") {
+      els.clearLocalDialog.close();
+    } else {
+      els.clearLocalDialog.removeAttribute("open");
+    }
+  }
+
+  function performClearLocalData() {
     try {
       localStorage.removeItem(defaults.storageKey);
-      // Rydd eventuelle andre nv5-nøkler også
       var keys = [];
       for (var i = 0; i < localStorage.length; i++) {
         var key = localStorage.key(i);
@@ -131,6 +149,7 @@
       console.warn("Kunne ikke tømme localStorage", error);
     }
     clearGithubIntervalCookie();
+    closeClearLocalDialog();
     closeMenu();
     var url = new URL(window.location.href);
     url.searchParams.delete("sync");
@@ -1428,8 +1447,16 @@
       });
     }
     if (els.clearLocal) {
-      els.clearLocal.addEventListener("click", function () {
-        clearLocalData();
+      els.clearLocal.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openClearLocalDialog();
+      });
+    }
+    if (els.clearLocalConfirm) {
+      els.clearLocalConfirm.addEventListener("click", function (event) {
+        event.preventDefault();
+        performClearLocalData();
       });
     }
     // Lukk meny ved klikk utenfor (etter denne event-runden, så toggle ikke lukker med en gang)
