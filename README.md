@@ -75,6 +75,7 @@ add_header Referrer-Policy "no-referrer" always;
 add_header X-Frame-Options "DENY" always;
 
 # PWA/start_url skal lande på /sis/, ikke /sis/content/
+# (ferdig snippet: nginx-sis-pwa.conf i server-branchen)
 location = /sis/content {
     return 302 /sis/;
 }
