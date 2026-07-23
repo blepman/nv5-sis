@@ -8,7 +8,6 @@
   const els = {
     boardTitle: document.getElementById("boardTitle"),
     clock: document.getElementById("clock"),
-    updated: document.getElementById("updated"),
     boards: document.getElementById("boards"),
     status: document.getElementById("status"),
     menuToggle: document.getElementById("menuToggle"),
@@ -520,14 +519,36 @@
     nodes.forEach(startTickerOnNode);
   }
 
+  function syncAgeState(updatedAt) {
+    if (!updatedAt) {
+      return "is-pending";
+    }
+    var ageSec = (Date.now() - updatedAt.getTime()) / 1000;
+    if (ageSec >= 179) {
+      return "is-error";
+    }
+    if (ageSec >= 59) {
+      return "is-stale";
+    }
+    return "is-ok";
+  }
+
   function syncStatusText(entry) {
-    if (entry.pending) {
+    if (!entry || entry.pending) {
       return { text: "Oppdaterer…", state: "is-pending" };
     }
-    if (entry.stale && entry.updatedAt) {
+    if (entry.updatedAt) {
+      var time = formatClock(entry.updatedAt, true);
+      var ageState = syncAgeState(entry.updatedAt);
+      if (entry.stale || entry.error) {
+        return {
+          text: "Ikke oppdatert · viser " + time,
+          state: ageState === "is-ok" ? "is-stale" : ageState,
+        };
+      }
       return {
-        text: "Ikke oppdatert · viser " + formatClock(entry.updatedAt, false),
-        state: "is-stale",
+        text: "Oppdatert " + time,
+        state: ageState,
       };
     }
     if (entry.error) {
@@ -535,13 +556,28 @@
         (entry.error && entry.error.message) || "Kunne ikke oppdatere";
       return { text: errMsg, state: "is-error" };
     }
-    if (entry.updatedAt) {
-      return {
-        text: "Oppdatert " + formatClock(entry.updatedAt, false),
-        state: "is-ok",
-      };
-    }
     return { text: "Venter…", state: "is-pending" };
+  }
+
+  function entriesFromCache() {
+    return settings.quays.map(function (quay) {
+      return (
+        boardCache[quayKey(quay)] || {
+          quay: quay,
+          pending: true,
+          updatedAt: null,
+          error: null,
+          stale: false,
+        }
+      );
+    });
+  }
+
+  function refreshSyncStatuses() {
+    if (!settings.quays.length || !els.boards.children.length) {
+      return;
+    }
+    patchSyncStatus(entriesFromCache());
   }
 
   function boardSignature(entries, now) {
@@ -567,42 +603,6 @@
         return quayKey(entry.quay) + "#" + depSig;
       })
       .join("|");
-  }
-
-  function updateGlobalUpdated(entries) {
-    var latest = null;
-    var anyFresh = false;
-    var anyStale = false;
-    var anyError = false;
-    entries.forEach(function (entry) {
-      if (entry.updatedAt && (!latest || entry.updatedAt > latest)) {
-        latest = entry.updatedAt;
-      }
-      if (entry.stale) {
-        anyStale = true;
-      }
-      if (entry.error) {
-        anyError = true;
-      }
-      if (entry.updatedAt && !entry.stale && !entry.error) {
-        anyFresh = true;
-      }
-    });
-    if (!latest && anyError) {
-      els.updated.textContent = "Oppdatering feilet";
-      return;
-    }
-    if (!latest) {
-      els.updated.textContent = "Venter på data";
-      return;
-    }
-    if (anyStale || (anyError && anyFresh)) {
-      els.updated.textContent =
-        "Delvis oppdatert " + formatClock(latest, false);
-      return;
-    }
-    els.updated.textContent =
-      "Sist oppdatert " + formatClock(latest, false);
   }
 
   function patchSyncStatus(entries) {
@@ -696,7 +696,6 @@
       els.boards.children.length === entries.length
     ) {
       patchSyncStatus(entries);
-      updateGlobalUpdated(entries);
       return;
     }
 
@@ -709,7 +708,6 @@
       })
       .join("");
     startTickers();
-    updateGlobalUpdated(entries);
   }
 
   async function refresh() {
@@ -722,7 +720,6 @@
       boardCache = {};
       lastBoardSignature = "";
       showStatus("Ingen holdeplasser valgt. Åpne innstillinger.", false);
-      els.updated.textContent = "Mangler holdeplass";
       return;
     }
 
@@ -1197,12 +1194,6 @@
   function forceGithubSync(target) {
     closeMenu();
     var syncTarget = target === "server" || target === "main" ? target : "both";
-    els.updated.textContent =
-      syncTarget === "server"
-        ? "Bygger siden på nytt…"
-        : syncTarget === "main"
-          ? "Bygger tavlen på nytt…"
-          : "Oppdaterer fra GitHub…";
     var url = new URL(window.location.href);
     url.searchParams.set("sync", syncTarget);
     window.location.replace(url.toString());
@@ -1336,7 +1327,10 @@
 
     updateBoardTitle();
     updateClock();
-    setInterval(updateClock, 1000);
+    setInterval(function () {
+      updateClock();
+      refreshSyncStatuses();
+    }, 1000);
     bindSettings();
     refresh();
     refreshTimer = setInterval(refresh, defaults.pollIntervalMs);

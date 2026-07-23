@@ -35,7 +35,8 @@ Hamburgermeny øverst til høyre:
 - Standard: **Tveita T** kai `NSR:Quay:11309` (mot sentrum)
 - Valg lagres i `localStorage` (+ cookie for `main`-intervall som PHP leser)
 - Standard **3 elementer** per quay (siste = ticker)
-- Hver holdeplass viser egen oppdateringsstatus
+- Hver holdeplass viser egen oppdateringsstatus med sekunder
+- Statusfarge: grønn under 59s, gul fra 59s, rød fra 179s siden siste vellykkede Entur-oppdatering
 
 ## Filer (`main`)
 

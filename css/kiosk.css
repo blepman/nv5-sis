@@ -227,12 +227,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.board__updated {
-  margin: 0.25rem 0 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
 .board__main {
   min-height: 0;
   display: flex;
@@ -276,10 +270,13 @@ body {
 .quay-board__sync {
   margin: 0;
   flex-shrink: 0;
-  max-width: 45%;
+  max-width: 48%;
   text-align: right;
   color: var(--muted);
+  font-family: var(--mono);
   font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   line-height: 1.3;
 }
 
