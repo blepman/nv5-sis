@@ -28,19 +28,20 @@ På tavlen (hamburgermeny):
 - **Bygg siden på nytt** → `?sync=server`
 - **Bygg tavlen på nytt** → `?sync=main`
 
-- Sync bruker fil-låser (`.server.lock`, `.sync.lock`)
-- `content/` og cache-filer (`.last-*`, `.server-*`) overskrives ikke av server-speil
+- Sync bruker fil-låser i **state-mappe utenfor webroot** (`sys_get_temp_dir()/nv5-sis-…`)
+- Ved første kjøring flyttes gamle `.last-*` / `.server-*` ut av `/sis/` og slettes fra webroot
+- `README.md` / `.gitignore` speiles **ikke** til webroot
+- `content/` overskrives ikke av server-speil
 - Hvis sync allerede kjører, vises cached tavle
 - `main` → `content/` kopierer kun allowlistede filtyper (`html`, `css`, `js`, `woff2`, `png`, `webmanifest`, `json`); symlinks og path-traversal i zip avvises
 
 Trenger PHP med **curl** (eller `allow_url_fopen`) og **zip**.
 
-## nginx (live)
+## Valgfritt: nginx defense-in-depth
 
-Live host bruker nginx, så `.htaccess` gjelder ikke. Legg til tilsvarende regler i site-config, f.eks. under `location` for `/sis/`:
+State ligger i system-temp (ikke under document root), så deny-regler er ikke påkrevd for sync-metadata. Ekstra sperre mot gamle restfiler / PHP under `content/` (valgfritt):
 
 ```nginx
-# Skjul driftsmetadata og README i /sis/
 location ~* ^/sis/(README\.md|\.(last-sha|last-check|server-sha|server-check|sync\.lock|server\.lock))$ {
     deny all;
     return 404;
@@ -49,8 +50,6 @@ location ~ ^/sis/\. {
     deny all;
     return 404;
 }
-
-# Ikke kjør PHP under content/ — kun statiske filer
 location ^~ /sis/content/ {
     location ~ \.php$ {
         deny all;
@@ -58,5 +57,3 @@ location ^~ /sis/content/ {
     }
 }
 ```
-
-Tilpass prefix (`/sis/`) etter faktisk installasjonssti.
