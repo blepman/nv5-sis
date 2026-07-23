@@ -411,6 +411,43 @@ body {
   color: var(--late);
 }
 
+.departure--service-run {
+  opacity: 0.72;
+}
+
+.departure--service-run .departure__destination {
+  font-style: italic;
+}
+
+.settings__fieldset {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.85rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 0.4rem;
+}
+
+.settings__fieldset legend {
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.settings__check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  margin-top: 0.55rem;
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.settings__check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
 .departure__time {
   text-align: right;
   font-family: var(--mono);

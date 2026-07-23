@@ -107,6 +107,22 @@
           <small>Siste element viser de neste 4 avgangstidene som ticker</small>
         </label>
 
+        <fieldset class="settings__fieldset">
+          <legend>Avgangsinformasjon</legend>
+          <label class="settings__check">
+            <input type="checkbox" id="showJourneyProgress" checked />
+            <span>Vis hvor transportmiddelet er (f.eks. Mot Haugerud)</span>
+          </label>
+          <label class="settings__check">
+            <input type="checkbox" id="showOccupancy" checked />
+            <span>Vis belegg når tilgjengelig (ikke passasjertall)</span>
+          </label>
+          <label class="settings__check">
+            <input type="checkbox" id="showServiceRuns" checked />
+            <span>Vis tjenestekjøring (ellers skjules)</span>
+          </label>
+        </fieldset>
+
         <label class="settings__field">
           <span>Sjekk tavlekode fra GitHub (main)</span>
           <select id="githubCheckInterval">

@@ -18,6 +18,9 @@
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
+    showJourneyProgress: document.getElementById("showJourneyProgress"),
+    showOccupancy: document.getElementById("showOccupancy"),
+    showServiceRuns: document.getElementById("showServiceRuns"),
     githubCheckInterval: document.getElementById("githubCheckInterval"),
     selectedQuays: document.getElementById("selectedQuays"),
     stopSearch: document.getElementById("stopSearch"),
@@ -87,11 +90,21 @@
     document.cookie = cookie;
   }
 
+  function boolSetting(value, fallback) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    return Boolean(fallback);
+  }
+
   function loadSettings() {
     var base = {
       quays: (defaults.quays || []).map(cloneQuay),
       elementsPerQuay: defaults.elementsPerQuay || 3,
       compactDepartures: defaults.compactDepartures || 4,
+      showJourneyProgress: boolSetting(defaults.showJourneyProgress, true),
+      showOccupancy: boolSetting(defaults.showOccupancy, true),
+      showServiceRuns: boolSetting(defaults.showServiceRuns, true),
       githubCheckIntervalSeconds: normalizeGithubInterval(
         defaults.githubCheckIntervalSeconds || 300
       ),
@@ -112,6 +125,15 @@
       if (parsed.elementsPerQuay) {
         base.elementsPerQuay = Math.max(2, Math.min(8, Number(parsed.elementsPerQuay) || 3));
       }
+      if (parsed.showJourneyProgress !== undefined) {
+        base.showJourneyProgress = Boolean(parsed.showJourneyProgress);
+      }
+      if (parsed.showOccupancy !== undefined) {
+        base.showOccupancy = Boolean(parsed.showOccupancy);
+      }
+      if (parsed.showServiceRuns !== undefined) {
+        base.showServiceRuns = Boolean(parsed.showServiceRuns);
+      }
       if (parsed.githubCheckIntervalSeconds !== undefined) {
         base.githubCheckIntervalSeconds = normalizeGithubInterval(
           parsed.githubCheckIntervalSeconds
@@ -129,6 +151,9 @@
       JSON.stringify({
         quays: settings.quays,
         elementsPerQuay: settings.elementsPerQuay,
+        showJourneyProgress: settings.showJourneyProgress,
+        showOccupancy: settings.showOccupancy,
+        showServiceRuns: settings.showServiceRuns,
         githubCheckIntervalSeconds: settings.githubCheckIntervalSeconds,
       })
     );
@@ -233,7 +258,9 @@
 
   function departureMeta(departure, includeDirection) {
     var parts = [];
-    if (departure.cancelled) {
+    if (departure.serviceRun) {
+      parts.push("Tjenestekjøring");
+    } else if (departure.cancelled) {
       parts.push("Innstilt");
     } else if (departure.delayMinutes >= 2) {
       parts.push("Forsinket " + departure.delayMinutes + " min");
@@ -244,6 +271,20 @@
     }
     if (includeDirection && departure.quayDescription) {
       parts.push(departure.quayDescription);
+    }
+    if (
+      settings.showJourneyProgress &&
+      departure.progressLabel &&
+      !departure.serviceRun
+    ) {
+      parts.push(departure.progressLabel);
+    }
+    if (
+      settings.showOccupancy &&
+      departure.occupancyLabel &&
+      !departure.serviceRun
+    ) {
+      parts.push(departure.occupancyLabel);
     }
     return parts.join(" · ");
   }
@@ -302,13 +343,14 @@
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
     var meta = departureMeta(departure, includeDirection);
-    if (departure.situations[0]) {
+    if (departure.situations[0] && !departure.serviceRun) {
       meta += " · " + departure.situations[0];
     }
 
     return (
       '<li class="departure' +
       (departure.cancelled ? " departure--cancelled" : "") +
+      (departure.serviceRun ? " departure--service-run" : "") +
       (animate ? " departure--enter" : "") +
       '">' +
       '<span class="departure__line"' +
@@ -594,6 +636,9 @@
               dep.cancelled ? "1" : "0",
               dep.realtime ? "1" : "0",
               String(dep.delayMinutes || 0),
+              dep.serviceRun ? "t" : "",
+              dep.progressLabel || "",
+              dep.occupancyStatus || "",
               entry.stale ? "s" : "f",
             ].join(",");
           })
@@ -601,6 +646,41 @@
         return quayKey(entry.quay) + "#" + depSig;
       })
       .join("|");
+  }
+
+  async function enrichFeaturedProgress(entries) {
+    if (!settings.showJourneyProgress || !window.NV5Entur) {
+      return;
+    }
+    var featuredCount = Math.max(0, settings.elementsPerQuay - 1);
+    var ids = [];
+    entries.forEach(function (entry) {
+      var deps = (entry.result && entry.result.departures) || [];
+      deps.slice(0, featuredCount).forEach(function (dep) {
+        if (
+          dep.serviceJourneyId &&
+          dep.realtime &&
+          !dep.cancelled &&
+          !dep.serviceRun
+        ) {
+          ids.push(dep.serviceJourneyId);
+        }
+      });
+    });
+    if (!ids.length) {
+      return;
+    }
+    var progressMap = await window.NV5Entur.fetchJourneyProgressMany(
+      defaults,
+      ids
+    );
+    entries.forEach(function (entry) {
+      var deps = (entry.result && entry.result.departures) || [];
+      deps.slice(0, featuredCount).forEach(function (dep) {
+        var progress = progressMap[dep.serviceJourneyId];
+        dep.progressLabel = (progress && progress.label) || "";
+      });
+    });
   }
 
   function patchSyncStatus(entries) {
@@ -725,16 +805,21 @@
           await ensureQuayLines(quay);
           var fetchCount = quayUsesLineFilter(quay)
             ? Math.max(needed * 3, 20)
-            : needed;
+            : settings.showServiceRuns
+              ? needed
+              : Math.max(needed * 2, needed + 6);
           var result = await window.NV5Entur.fetchDepartures(
             defaults,
             quay,
             fetchCount
           );
-          result.departures = filterDeparturesForQuay(
-            result.departures,
-            quay
-          ).slice(0, needed);
+          var filtered = filterDeparturesForQuay(result.departures, quay);
+          if (!settings.showServiceRuns) {
+            filtered = filtered.filter(function (dep) {
+              return !dep.serviceRun;
+            });
+          }
+          result.departures = filtered.slice(0, needed);
           return { quay: quay, result: result };
         })
       );
@@ -802,6 +887,12 @@
         showStatus("Kunne ikke oppdatere. Viser forrige data…", true);
       } else {
         hideStatus();
+      }
+
+      try {
+        await enrichFeaturedProgress(entries);
+      } catch (error) {
+        console.warn("Kunne ikke berike turprogress", error);
       }
 
       updateBoardTitle();
@@ -894,6 +985,15 @@
   async function openSettings() {
     draftQuays = settings.quays.map(cloneQuay);
     els.elementsPerQuay.value = String(settings.elementsPerQuay);
+    if (els.showJourneyProgress) {
+      els.showJourneyProgress.checked = settings.showJourneyProgress;
+    }
+    if (els.showOccupancy) {
+      els.showOccupancy.checked = settings.showOccupancy;
+    }
+    if (els.showServiceRuns) {
+      els.showServiceRuns.checked = settings.showServiceRuns;
+    }
     els.githubCheckInterval.value = String(settings.githubCheckIntervalSeconds);
     els.stopSearch.value = "";
     els.searchResults.innerHTML = "";
@@ -923,6 +1023,15 @@
       2,
       Math.min(8, Number(els.elementsPerQuay.value) || 3)
     );
+    settings.showJourneyProgress = els.showJourneyProgress
+      ? els.showJourneyProgress.checked
+      : true;
+    settings.showOccupancy = els.showOccupancy
+      ? els.showOccupancy.checked
+      : true;
+    settings.showServiceRuns = els.showServiceRuns
+      ? els.showServiceRuns.checked
+      : true;
     settings.githubCheckIntervalSeconds = normalizeGithubInterval(
       els.githubCheckInterval.value
     );
