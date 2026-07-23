@@ -349,7 +349,7 @@ function legacy_webroot_state_map(): array
  */
 function server_sync_skip_web(): array
 {
-    return ['README.md', '.gitignore'];
+    return ['README.md', '.gitignore', 'nginx-sis-pwa.conf'];
 }
 
 /**

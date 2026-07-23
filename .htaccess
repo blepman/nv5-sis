@@ -47,10 +47,10 @@ Options -Indexes
     Header set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.entur.io; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests"
   </FilesMatch>
 
-  <FilesMatch "\.(woff2|png|webmanifest)$">
+  <FilesMatch "\.(woff2|png)$">
     Header set Cache-Control "public, max-age=604800, immutable"
   </FilesMatch>
-  <FilesMatch "\.(css|js)$">
+  <FilesMatch "\.(css|js|webmanifest)$">
     Header set Cache-Control "public, max-age=300"
   </FilesMatch>
 </IfModule>
