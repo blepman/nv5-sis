@@ -17,8 +17,12 @@ Feature-branches:
 ## Hvordan det fungerer
 
 1. PHP i `/sis/` speiler **`server`-branchen** til samme mappe (ca. hver time, eller via menyknappen).
-2. Deretter speiles **`main`** til `content/` (intervall styres i Innstillinger).
+2. Deretter speiles **`main`** til `content/` (intervall styres i Innstillinger, minimum 60s).
 3. Tavlen vises fra `content/` og henter avganger fra Entur.
+
+## Sync-modell og tillit
+
+`?sync=main`, `?sync=server` og `?sync=both` er **åpne med vilje** — brukeren skal kunne tvinge oppdatering uten nøkkel når tavlen ikke er oppdatert. Tilliten ligger i GitHub-repoet: skrivetilgang til `server` kan endre PHP på hosten, skrivetilgang til `main` kan endre tavle-JS for alle kiosker.
 
 ## Meny
 

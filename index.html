@@ -134,7 +134,6 @@
         <label class="settings__field">
           <span>Sjekk tavlekode fra GitHub (main)</span>
           <select id="githubCheckInterval">
-            <option value="0">Ved hvert besøk</option>
             <option value="60">Hvert minutt</option>
             <option value="300" selected>Hvert 5. minutt</option>
             <option value="900">Hvert 15. minutt</option>
@@ -142,8 +141,9 @@
             <option value="3600">Hver time</option>
           </select>
           <small>
-            Styrer hvor ofte tavlen (HTML/CSS/JS) hentes fra main. Bruk
-            «Hent ny tavle» i menyen for å hente med en gang.
+            Styrer hvor ofte tavlen (HTML/CSS/JS) sjekkes fra main (minst
+            hvert minutt). Bruk «Hent ny tavle» i menyen for å hente med en
+            gang.
           </small>
         </label>
 
