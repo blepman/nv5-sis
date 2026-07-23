@@ -44,7 +44,8 @@ Audit-logg: `sync-audit.log` i state-mappen (IP + allow/deny).
 - Sync bruker fil-låser i **state-mappe utenfor webroot** (`sys_get_temp_dir()/nv5-sis-…`)
 - Ved første kjøring flyttes gamle `.last-*` / `.server-*` ut av `/sis/` og slettes fra webroot
 - `README.md` / `.gitignore` speiles **ikke** til webroot
-- Påkrevde serverfiler som alltid speiles: `index.php`, `.htaccess` (mangler de, kjøres sync på nytt selv om SHA er uendret)
+- `nginx-sis-pwa.conf` speiles til `/sis/` (sperret for HTTP via `.htaccess`)
+- Påkrevde serverfiler som alltid speiles: `index.php`, `.htaccess`, `nginx-sis-pwa.conf` (mangler de, kjøres sync på nytt selv om SHA er uendret)
 - `?sync=server` tvinger alltid ny speiling av serverfilene (ikke bare SHA-sjekk)
 - `content/` overskrives ikke av server-speil
 - Hvis sync allerede kjører, vises cached tavle
@@ -61,9 +62,19 @@ Trenger PHP med **curl** (eller `allow_url_fopen`) og **zip**.
 
 **Ikke sett en ekstra `Content-Security-Policy` i nginx** — browsere håndhever alle CSP-hoder samtidig (strengeste kombinasjon). La PHP være den ene CSP-kilden for HTML.
 
-## Valgfritt: nginx defense-in-depth
+## nginx-snippet (synces til webroot)
 
-State ligger i system-temp (ikke under document root), så deny-regler er ikke påkrevd for sync-metadata. Ekstra sperre + sikkerhetshoder (valgfritt):
+`nginx-sis-pwa.conf` ligger i repoet og speiles til `/sis/nginx-sis-pwa.conf` ved hver server-sync. Det er enklere enn å kopiere location-blokker manuelt: **én gang** i HTTPS-vhost:
+
+```nginx
+include /ABS/STI/TIL/sis/nginx-sis-pwa.conf;
+```
+
+Deretter `nginx -t && systemctl reload nginx`. Senere endringer i snippet kommer med `?sync=server`, men nginx må reloades for å ta dem i bruk.
+
+### Valgfritt: ekstra defense-in-depth
+
+State ligger i system-temp (ikke under document root). Ekstra sperre + sikkerhetshoder (valgfritt, i tillegg til include over):
 
 ```nginx
 # HSTS (anbefalt på HTTPS-vhost)
@@ -73,18 +84,6 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" alway
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "no-referrer" always;
 add_header X-Frame-Options "DENY" always;
-
-# PWA/start_url skal lande på /sis/, ikke /sis/content/
-# (ferdig snippet: nginx-sis-pwa.conf i server-branchen)
-location = /sis/content {
-    return 302 /sis/;
-}
-location = /sis/content/ {
-    return 302 /sis/;
-}
-location = /sis/content/index.html {
-    return 302 /sis/;
-}
 
 location ~* ^/sis/(README\.md|\.(last-sha|last-check|server-sha|server-check|sync\.lock|server\.lock))$ {
     deny all;
@@ -105,3 +104,4 @@ location ^~ /sis/content/ {
     }
 }
 ```
+
