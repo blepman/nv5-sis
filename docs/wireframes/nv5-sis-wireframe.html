@@ -130,7 +130,7 @@
         -webkit-user-select: none;
         cursor: grab;
         touch-action: none;
-        overflow: hidden;
+        overflow: visible;
       }
 
       .box:active,
@@ -139,11 +139,67 @@
         z-index: 20;
       }
 
+      .box.is-resizing {
+        z-index: 22;
+      }
+
       .box.is-selected {
         border-style: solid;
         border-color: var(--accent);
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
         z-index: 15;
+      }
+
+      .box__handle {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        background: var(--accent);
+        border: 2px solid #0b1220;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+        z-index: 5;
+        touch-action: none;
+      }
+
+      .box:not(.is-selected) .box__handle {
+        display: none;
+      }
+
+      .box__handle--se {
+        right: -9px;
+        bottom: -9px;
+        width: 22px;
+        height: 22px;
+        cursor: nwse-resize;
+      }
+
+      .box__handle--e {
+        right: -9px;
+        top: 50%;
+        margin-top: -9px;
+        cursor: ew-resize;
+      }
+
+      .box__handle--s {
+        left: 50%;
+        bottom: -9px;
+        margin-left: -9px;
+        cursor: ns-resize;
+      }
+
+      .box__handle--w {
+        left: -9px;
+        top: 50%;
+        margin-top: -9px;
+        cursor: ew-resize;
+      }
+
+      .box__handle--n {
+        left: 50%;
+        top: -9px;
+        margin-left: -9px;
+        cursor: ns-resize;
       }
 
       .box__title {
@@ -260,7 +316,7 @@
     <header class="top">
       <div>
         <h1>NV5-SIS wireframe</h1>
-        <p>Trykk en boks for docs. Dra for å flytte. Posisjoner lagres lokalt.</p>
+        <p>Trykk for docs. Dra for å flytte. Bruk håndtakene for å endre størrelse.</p>
       </div>
       <div class="actions">
         <button type="button" id="btnReset">Nullstill layout</button>
@@ -277,7 +333,7 @@
 
     <aside class="dock" id="dock" aria-live="polite">
       <p class="empty-doc">
-        Trykk på en boks for å se CSS-klasser, mål og JS-oppførsel.
+        Trykk en boks for docs. Dra gule håndtak for å endre størrelse.
       </p>
     </aside>
 
@@ -521,7 +577,12 @@
           });
         }
 
+        var MIN_W = 24;
+        var MIN_H = 24;
+
         function clamp(item) {
+          item.w = Math.max(MIN_W, Math.min(stage.clientWidth, item.w));
+          item.h = Math.max(MIN_H, Math.min(stage.clientHeight, item.h));
           var maxX = stage.clientWidth - item.w;
           var maxY = stage.clientHeight - item.h;
           item.x = Math.max(0, Math.min(maxX, item.x));
@@ -531,7 +592,7 @@
         function renderDoc(item) {
           if (!item) {
             dock.innerHTML =
-              '<p class="empty-doc">Trykk på en boks for å se CSS-klasser, mål og JS-oppførsel.</p>';
+              '<p class="empty-doc">Trykk en boks for docs. Dra gule håndtak for å endre størrelse.</p>';
             return;
           }
           var bullets = (item.bullets || [])
@@ -555,11 +616,11 @@
             Math.round(item.x) +
             "," +
             Math.round(item.y) +
-            " · " +
+            " · størrelse " +
             Math.round(item.w) +
             "×" +
             Math.round(item.h) +
-            "px</p>";
+            "px (dra gule håndtak)</p>";
         }
 
         function escapeHtml(value) {
@@ -589,9 +650,22 @@
               "</div>" +
               (item.kind === "line" || item.kind === "warn" || item.kind === "status"
                 ? ""
-                : '<div class="box__meta">' + escapeHtml(item.id) + "</div>");
+                : '<div class="box__meta">' + escapeHtml(item.id) + "</div>") +
+              '<span class="box__handle box__handle--n" data-handle="n" aria-hidden="true"></span>' +
+              '<span class="box__handle box__handle--e" data-handle="e" aria-hidden="true"></span>' +
+              '<span class="box__handle box__handle--s" data-handle="s" aria-hidden="true"></span>' +
+              '<span class="box__handle box__handle--w" data-handle="w" aria-hidden="true"></span>' +
+              '<span class="box__handle box__handle--se" data-handle="se" aria-hidden="true"></span>';
             stage.appendChild(el);
           });
+        }
+
+        function applyBoxStyle(el, item) {
+          if (!el) return;
+          el.style.left = item.x + "px";
+          el.style.top = item.y + "px";
+          el.style.width = item.w + "px";
+          el.style.height = item.h + "px";
         }
 
         function itemById(id) {
@@ -608,6 +682,7 @@
         }
 
         function pointerDown(event) {
+          var handle = event.target.closest(".box__handle");
           var target = event.target.closest(".box");
           if (!target) return;
           event.preventDefault();
@@ -616,13 +691,27 @@
           if (!item) return;
           select(id);
           var rect = stage.getBoundingClientRect();
-          drag = {
-            id: id,
-            ox: event.clientX - rect.left - item.x,
-            oy: event.clientY - rect.top - item.y,
-            moved: false,
-          };
-          target.classList.add("is-dragging");
+          var px = event.clientX - rect.left;
+          var py = event.clientY - rect.top;
+          if (handle) {
+            drag = {
+              mode: "resize",
+              handle: handle.getAttribute("data-handle") || "se",
+              id: id,
+              startX: px,
+              startY: py,
+              orig: { x: item.x, y: item.y, w: item.w, h: item.h },
+            };
+            target.classList.add("is-resizing");
+          } else {
+            drag = {
+              mode: "move",
+              id: id,
+              ox: px - item.x,
+              oy: py - item.y,
+            };
+            target.classList.add("is-dragging");
+          }
           if (target.setPointerCapture) {
             target.setPointerCapture(event.pointerId);
           }
@@ -633,19 +722,51 @@
           var item = itemById(drag.id);
           if (!item) return;
           var rect = stage.getBoundingClientRect();
-          var nx = event.clientX - rect.left - drag.ox;
-          var ny = event.clientY - rect.top - drag.oy;
-          if (Math.abs(nx - item.x) > 2 || Math.abs(ny - item.y) > 2) {
-            drag.moved = true;
-          }
-          item.x = nx;
-          item.y = ny;
-          clamp(item);
+          var px = event.clientX - rect.left;
+          var py = event.clientY - rect.top;
           var el = stage.querySelector('.box[data-id="' + item.id + '"]');
-          if (el) {
-            el.style.left = item.x + "px";
-            el.style.top = item.y + "px";
-            el.classList.add("is-dragging");
+
+          if (drag.mode === "resize") {
+            var o = drag.orig;
+            var dx = px - drag.startX;
+            var dy = py - drag.startY;
+            var next = { x: o.x, y: o.y, w: o.w, h: o.h };
+            var h = drag.handle;
+            if (h === "e" || h === "se") {
+              next.w = o.w + dx;
+            }
+            if (h === "s" || h === "se") {
+              next.h = o.h + dy;
+            }
+            if (h === "w") {
+              next.w = o.w - dx;
+              next.x = o.x + dx;
+            }
+            if (h === "n") {
+              next.h = o.h - dy;
+              next.y = o.y + dy;
+            }
+            if (next.w < MIN_W) {
+              if (h === "w") next.x = o.x + o.w - MIN_W;
+              next.w = MIN_W;
+            }
+            if (next.h < MIN_H) {
+              if (h === "n") next.y = o.y + o.h - MIN_H;
+              next.h = MIN_H;
+            }
+            item.x = next.x;
+            item.y = next.y;
+            item.w = next.w;
+            item.h = next.h;
+            clamp(item);
+            applyBoxStyle(el, item);
+            if (el) el.classList.add("is-resizing");
+          } else {
+            item.x = px - drag.ox;
+            item.y = py - drag.oy;
+            clamp(item);
+            applyBoxStyle(el, item);
+            if (el) el.classList.add("is-dragging");
           }
           renderDoc(item);
         }
@@ -682,7 +803,7 @@
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(payload).then(
               function () {
-                alert("Posisjoner kopiert til utklippstavlen.");
+                alert("Posisjoner og størrelser kopiert.");
               },
               function () {
                 window.prompt("Kopier JSON:", payload);
