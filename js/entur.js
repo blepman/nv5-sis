@@ -572,10 +572,11 @@
     const aimed = call.aimedDepartureTime
       ? new Date(call.aimedDepartureTime)
       : null;
-    const delayMinutes =
+    const delaySeconds =
       expected && aimed
-        ? Math.round((expected.getTime() - aimed.getTime()) / 60000)
+        ? Math.round((expected.getTime() - aimed.getTime()) / 1000)
         : 0;
+    const delayMinutes = Math.round(delaySeconds / 60);
 
     const situations = (call.situations || [])
       .map(function (situation) {
@@ -613,6 +614,7 @@
       aimed: aimed,
       realtime: Boolean(call.realtime),
       cancelled: Boolean(call.cancellation),
+      delaySeconds: delaySeconds,
       delayMinutes: delayMinutes,
       situations: situations,
       quayName: quay.name || "",
