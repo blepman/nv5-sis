@@ -541,7 +541,7 @@
   }
 
   var SITUATION_ICON_SVG =
-    '<svg viewBox="0 0 24 24" width="14" height="14" focusable="false" aria-hidden="true">' +
+    '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">' +
     '<path fill="#111" d="M12 3.1L22.6 21.4H1.4L12 3.1z"/>' +
     '<rect x="11" y="9.2" width="2" height="6.2" rx="0.35" fill="#f0c674"/>' +
     '<rect x="11" y="17" width="2" height="2" rx="0.35" fill="#f0c674"/>' +
@@ -662,11 +662,13 @@
     var progress = journeyProgress(departure, now);
     var delayClass = delayTimeClass(departure);
     var delayLabel = formatDelayLabel(departure);
+    var hasSituation = situationMessages(departure).length > 0;
 
     return (
       '<li class="departure' +
       (departure.cancelled ? " departure--cancelled" : "") +
       (departure.serviceRun ? " departure--service-run" : "") +
+      (hasSituation ? " departure--has-situation" : "") +
       (animate ? " departure--enter" : "") +
       '">' +
       renderLineBadge(departure) +
