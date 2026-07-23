@@ -256,7 +256,18 @@
     return formatClock(departure.expected, false);
   }
 
-  function departureMeta(departure, includeDirection) {
+  function journeyProgressLabel(departure, now) {
+    if (
+      !settings.showJourneyProgress ||
+      !window.NV5Entur ||
+      typeof window.NV5Entur.journeyProgressLabel !== "function"
+    ) {
+      return "";
+    }
+    return window.NV5Entur.journeyProgressLabel(departure, now) || "";
+  }
+
+  function departureMeta(departure, includeDirection, now) {
     var parts = [];
     if (departure.serviceRun) {
       parts.push("Tjenestekjøring");
@@ -272,12 +283,9 @@
     if (includeDirection && departure.quayDescription) {
       parts.push(departure.quayDescription);
     }
-    if (
-      settings.showJourneyProgress &&
-      departure.progressLabel &&
-      !departure.serviceRun
-    ) {
-      parts.push(departure.progressLabel);
+    var progress = journeyProgressLabel(departure, now || new Date());
+    if (progress) {
+      parts.push(progress);
     }
     if (
       settings.showOccupancy &&
@@ -342,7 +350,7 @@
   function renderDepartureRow(departure, now, includeDirection, animate) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
-    var meta = departureMeta(departure, includeDirection);
+    var meta = departureMeta(departure, includeDirection, now);
     if (departure.situations[0] && !departure.serviceRun) {
       meta += " · " + departure.situations[0];
     }
@@ -637,7 +645,7 @@
               dep.realtime ? "1" : "0",
               String(dep.delayMinutes || 0),
               dep.serviceRun ? "t" : "",
-              dep.progressLabel || "",
+              journeyProgressLabel(dep, now),
               dep.occupancyStatus || "",
               entry.stale ? "s" : "f",
             ].join(",");
@@ -646,41 +654,6 @@
         return quayKey(entry.quay) + "#" + depSig;
       })
       .join("|");
-  }
-
-  async function enrichFeaturedProgress(entries) {
-    if (!settings.showJourneyProgress || !window.NV5Entur) {
-      return;
-    }
-    var featuredCount = Math.max(0, settings.elementsPerQuay - 1);
-    var ids = [];
-    entries.forEach(function (entry) {
-      var deps = (entry.result && entry.result.departures) || [];
-      deps.slice(0, featuredCount).forEach(function (dep) {
-        if (
-          dep.serviceJourneyId &&
-          dep.realtime &&
-          !dep.cancelled &&
-          !dep.serviceRun
-        ) {
-          ids.push(dep.serviceJourneyId);
-        }
-      });
-    });
-    if (!ids.length) {
-      return;
-    }
-    var progressMap = await window.NV5Entur.fetchJourneyProgressMany(
-      defaults,
-      ids
-    );
-    entries.forEach(function (entry) {
-      var deps = (entry.result && entry.result.departures) || [];
-      deps.slice(0, featuredCount).forEach(function (dep) {
-        var progress = progressMap[dep.serviceJourneyId];
-        dep.progressLabel = (progress && progress.label) || "";
-      });
-    });
   }
 
   function patchSyncStatus(entries) {
@@ -887,12 +860,6 @@
         showStatus("Kunne ikke oppdatere. Viser forrige data…", true);
       } else {
         hideStatus();
-      }
-
-      try {
-        await enrichFeaturedProgress(entries);
-      } catch (error) {
-        console.warn("Kunne ikke berike turprogress", error);
       }
 
       updateBoardTitle();
