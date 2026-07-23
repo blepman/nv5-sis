@@ -159,12 +159,14 @@ function normalize_board_interval(int $seconds): int
 
 /**
  * State/lock utenfor webroot — nginx trenger ikke egne deny-regler for disse.
+ * Bruker system-temp (ikke sibling av /sis/, som ofte fortsatt er public).
  */
 function ensure_state_dir(string $root): string
 {
     $candidates = [
-        dirname($root) . '/.nv5-sis-state',
         sys_get_temp_dir() . '/nv5-sis-' . substr(hash('sha256', $root), 0, 16),
+        // Fallback hvis temp er utilgjengelig (sjeldent)
+        dirname($root) . '/.nv5-sis-state-' . substr(hash('sha256', $root), 0, 8),
     ];
     foreach ($candidates as $dir) {
         if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
