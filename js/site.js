@@ -577,11 +577,43 @@
       '<div class="departure__situation" data-situations="' +
       escapeHtml(JSON.stringify(messages)) +
       '">' +
+      renderSituationIconHtml() +
       '<span class="departure__situation-text">' +
       escapeHtml(current) +
       "</span>" +
       "</div>"
     );
+  }
+
+  function clearLineBadgeSizes(root) {
+    var scope = root || els.boards;
+    if (!scope) {
+      return;
+    }
+    scope.querySelectorAll(".departure__line").forEach(function (el) {
+      el.style.height = "";
+      el.style.minHeight = "";
+    });
+  }
+
+  function equalizeLineBadges(root) {
+    var scope = root || els.boards;
+    if (!scope) {
+      return;
+    }
+    clearLineBadgeSizes(scope);
+    var mains = scope.querySelectorAll(".departure__main");
+    var maxH = 0;
+    mains.forEach(function (main) {
+      maxH = Math.max(maxH, main.offsetHeight || 0);
+    });
+    if (maxH < 1) {
+      return;
+    }
+    scope.querySelectorAll(".departure__line").forEach(function (el) {
+      el.style.height = maxH + "px";
+      el.style.minHeight = maxH + "px";
+    });
   }
 
   function patchSituations(now) {
@@ -691,7 +723,6 @@
       '">' +
       '<div class="departure__rail">' +
       renderLineBadge(departure) +
-      (hasSituation ? renderSituationIconHtml() : "") +
       "</div>" +
       '<div class="departure__main">' +
       '<div class="departure__dest-wrap">' +
@@ -1155,6 +1186,9 @@
       })
       .join("");
     startTickers();
+    requestAnimationFrame(function () {
+      equalizeLineBadges();
+    });
   }
 
   async function refresh() {
@@ -1816,6 +1850,13 @@
     bindSettings();
     refresh();
     refreshTimer = setInterval(refresh, defaults.pollIntervalMs);
+    var lineBadgeResizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(lineBadgeResizeTimer);
+      lineBadgeResizeTimer = setTimeout(function () {
+        equalizeLineBadges();
+      }, 120);
+    });
     requestWakeLock();
 
     if (defaults.pageReloadIntervalMs > 0) {
