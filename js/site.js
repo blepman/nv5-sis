@@ -1400,7 +1400,11 @@
     updateClock();
     setInterval(function () {
       updateClock();
-      refreshSyncStatuses();
+      if (settings.quays.length) {
+        renderBoards(entriesFromCache(), new Date());
+      } else {
+        refreshSyncStatuses();
+      }
     }, 1000);
     bindSettings();
     refresh();
