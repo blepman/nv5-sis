@@ -640,9 +640,12 @@
       return;
     }
 
-    // 1) Nullstill, mål naturlig høyde, sett alle avgangsbokser til samme maks
-    var mains = [];
-    var maxMain = 0;
+    // Featured og ticker equaliseres hver for seg (ticker skal ikke blåse opp vanlige rader)
+    var groups = {
+      featured: { items: [], maxMain: 0 },
+      ticker: { items: [], maxMain: 0 },
+    };
+
     rows.forEach(function (row) {
       var main = row.querySelector(".departure__main");
       var line = row.querySelector(".departure__line");
@@ -664,39 +667,41 @@
         situation.style.minHeight = "";
       }
       var natural = Math.round(main.getBoundingClientRect().height);
-      mains.push({
+      var group = row.classList.contains("departure--ticker")
+        ? groups.ticker
+        : groups.featured;
+      group.items.push({
         main: main,
         line: line,
         warn: warn,
         situation: situation,
-        natural: natural,
       });
-      if (natural > maxMain) {
-        maxMain = natural;
+      if (natural > group.maxMain) {
+        group.maxMain = natural;
       }
     });
-    if (maxMain < 1) {
-      return;
-    }
 
-    mains.forEach(function (item) {
-      item.main.style.minHeight = maxMain + "px";
-    });
-
-    // 2) Linjenummer (+ avviksboks) fyller den felles avgangshøyden
-    mains.forEach(function (item) {
-      var h = maxMain;
-      item.line.style.height = h + "px";
-      item.line.style.minHeight = h + "px";
-      if (item.warn) {
-        var w = Math.round(item.line.getBoundingClientRect().width) || h;
-        item.warn.style.height = h + "px";
-        item.warn.style.minHeight = h + "px";
-        item.warn.style.width = w + "px";
+    Object.keys(groups).forEach(function (key) {
+      var group = groups[key];
+      if (!group.items.length || group.maxMain < 1) {
+        return;
       }
-      if (item.situation) {
-        item.situation.style.minHeight = h + "px";
-      }
+      group.items.forEach(function (item) {
+        item.main.style.minHeight = group.maxMain + "px";
+        item.line.style.height = group.maxMain + "px";
+        item.line.style.minHeight = group.maxMain + "px";
+        if (item.warn) {
+          var w =
+            Math.round(item.line.getBoundingClientRect().width) ||
+            group.maxMain;
+          item.warn.style.height = group.maxMain + "px";
+          item.warn.style.minHeight = group.maxMain + "px";
+          item.warn.style.width = w + "px";
+        }
+        if (item.situation) {
+          item.situation.style.minHeight = group.maxMain + "px";
+        }
+      });
     });
   }
 
