@@ -16,8 +16,6 @@
     syncServer: document.getElementById("syncServer"),
     syncBoard: document.getElementById("syncBoard"),
     clearLocal: document.getElementById("clearLocal"),
-    clearLocalDialog: document.getElementById("clearLocalDialog"),
-    clearLocalConfirm: document.getElementById("clearLocalConfirm"),
     settingsDialog: document.getElementById("settingsDialog"),
     settingsSave: document.getElementById("settingsSave"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
@@ -108,31 +106,7 @@
     });
   }
 
-  function openClearLocalDialog() {
-    closeMenu();
-    if (!els.clearLocalDialog) {
-      performClearLocalData();
-      return;
-    }
-    if (typeof els.clearLocalDialog.showModal === "function") {
-      els.clearLocalDialog.showModal();
-    } else {
-      els.clearLocalDialog.setAttribute("open", "");
-    }
-  }
-
-  function closeClearLocalDialog() {
-    if (!els.clearLocalDialog) {
-      return;
-    }
-    if (typeof els.clearLocalDialog.close === "function") {
-      els.clearLocalDialog.close();
-    } else {
-      els.clearLocalDialog.removeAttribute("open");
-    }
-  }
-
-  function performClearLocalData() {
+  function clearLocalData() {
     try {
       localStorage.removeItem(defaults.storageKey);
       var keys = [];
@@ -149,11 +123,10 @@
       console.warn("Kunne ikke tømme localStorage", error);
     }
     clearGithubIntervalCookie();
-    closeClearLocalDialog();
     closeMenu();
     var url = new URL(window.location.href);
     url.searchParams.delete("sync");
-    window.location.replace(url.toString());
+    window.location.replace(url.pathname + url.search + url.hash);
   }
 
   function boolSetting(value, fallback) {
@@ -1450,13 +1423,7 @@
       els.clearLocal.addEventListener("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
-        openClearLocalDialog();
-      });
-    }
-    if (els.clearLocalConfirm) {
-      els.clearLocalConfirm.addEventListener("click", function (event) {
-        event.preventDefault();
-        performClearLocalData();
+        clearLocalData();
       });
     }
     // Lukk meny ved klikk utenfor (etter denne event-runden, så toggle ikke lukker med en gang)
