@@ -406,19 +406,51 @@
     return "";
   }
 
-  function departureMeta(departure, includeDirection) {
+  function lineStatusKind(departure) {
+    if (departure.cancelled) {
+      return "cancelled";
+    }
+    if (departure.realtime) {
+      return "realtime";
+    }
+    return "scheduled";
+  }
+
+  function lineStatusLabel(kind) {
+    if (kind === "cancelled") {
+      return "Innstilt";
+    }
+    if (kind === "realtime") {
+      return "Sanntid";
+    }
+    return "Rutetid";
+  }
+
+  function renderLineBadge(departure, attrs) {
+    var kind = lineStatusKind(departure);
+    var extra = attrs ? " " + attrs : "";
+    return (
+      '<span class="departure__line-wrap departure__line-wrap--' +
+      kind +
+      '"' +
+      extra +
+      ">" +
+      '<span class="departure__line"' +
+      lineStyleAttr(departure) +
+      ">" +
+      escapeHtml(departure.line) +
+      "</span>" +
+      '<span class="visually-hidden">' +
+      escapeHtml(lineStatusLabel(kind)) +
+      "</span>" +
+      "</span>"
+    );
+  }
+
+  function departureMeta(departure) {
     var parts = [];
     if (departure.serviceRun) {
       parts.push("Tjenestekjøring");
-    } else if (departure.cancelled) {
-      parts.push("Innstilt");
-    } else if (departure.realtime) {
-      parts.push("Sanntid");
-    } else {
-      parts.push("Rutetid");
-    }
-    if (includeDirection && departure.quayDescription) {
-      parts.push(departure.quayDescription);
     }
     if (
       settings.showOccupancy &&
@@ -428,6 +460,13 @@
       parts.push(departure.occupancyLabel);
     }
     return parts.join(" · ");
+  }
+
+  function departureDirection(departure, includeDirection) {
+    if (!includeDirection || !departure.quayDescription) {
+      return "";
+    }
+    return departure.quayDescription;
   }
 
   function escapeHtml(value) {
@@ -485,10 +524,13 @@
   function renderDepartureRow(departure, now, includeDirection, animate) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
-    var meta = departureMeta(departure, includeDirection);
+    var meta = departureMeta(departure);
     if (departure.situations[0] && !departure.serviceRun) {
-      meta += " · " + departure.situations[0];
+      meta = meta
+        ? meta + " · " + departure.situations[0]
+        : departure.situations[0];
     }
+    var direction = departureDirection(departure, includeDirection);
     var progress = journeyProgress(departure, now);
     var delayClass = delayTimeClass(departure);
     var timeClasses = "departure__time";
@@ -504,20 +546,19 @@
       (departure.serviceRun ? " departure--service-run" : "") +
       (animate ? " departure--enter" : "") +
       '">' +
-      '<span class="departure__line"' +
-      lineStyleAttr(departure) +
-      ">" +
-      escapeHtml(departure.line) +
-      "</span>" +
+      renderLineBadge(departure) +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination">' +
       escapeHtml(departure.destination) +
       "</div>" +
-      '<div class="departure__meta' +
-      (departure.cancelled ? " is-late" : "") +
-      '">' +
-      escapeHtml(meta) +
-      "</div>" +
+      (direction
+        ? '<div class="departure__direction">' +
+          escapeHtml(direction) +
+          "</div>"
+        : "") +
+      (meta
+        ? '<div class="departure__meta">' + escapeHtml(meta) + "</div>"
+        : "") +
       renderProgressHtml(progress) +
       "</div>" +
       '<span class="' +
@@ -551,11 +592,6 @@
       });
     var multiDestination = uniqueDestinations.length > 1;
     var items = departures.map(function (dep) {
-      var kind = dep.cancelled
-        ? "Innstilt"
-        : dep.realtime
-          ? "Sanntid"
-          : "Rutetid";
       var time = formatDepartureLabel(dep, now);
       var delayClass = delayTimeClass(dep);
       return {
@@ -564,7 +600,8 @@
         colour: dep.colour || "",
         textColour: dep.textColour || "",
         destination: dep.destination || "",
-        kind: kind,
+        status: lineStatusKind(dep),
+        statusLabel: lineStatusLabel(lineStatusKind(dep)),
         cancelled: Boolean(dep.cancelled),
         delayClass: delayClass,
         now: time === "Nå",
@@ -582,19 +619,10 @@
       '" data-ticker-sync-dest="' +
       (multiLine || multiDestination ? "1" : "0") +
       '">' +
-      '<span class="departure__line" data-ticker-line' +
-      lineStyleAttr(first) +
-      ">" +
-      escapeHtml(first.line) +
-      "</span>" +
+      renderLineBadge(first, 'data-ticker-line-wrap') +
       '<div class="departure__dest-wrap">' +
       '<div class="departure__destination" data-ticker-destination>' +
       escapeHtml(destinationLabel) +
-      "</div>" +
-      '<div class="departure__meta' +
-      (items[0].cancelled ? " is-late" : "") +
-      '" data-ticker-meta>' +
-      escapeHtml(items[0].kind) +
       "</div>" +
       "</div>" +
       '<span class="departure__time departure__ticker' +
@@ -629,8 +657,13 @@
       return;
     }
     var slot = node.querySelector(".departure__ticker");
-    var meta = node.querySelector("[data-ticker-meta]");
-    var lineEl = node.querySelector("[data-ticker-line]");
+    var lineWrap = node.querySelector("[data-ticker-line-wrap]");
+    var lineEl = lineWrap
+      ? lineWrap.querySelector(".departure__line")
+      : node.querySelector("[data-ticker-line]");
+    var lineSr = lineWrap
+      ? lineWrap.querySelector(".visually-hidden")
+      : null;
     var destEl = node.querySelector("[data-ticker-destination]");
     var syncDestination = node.getAttribute("data-ticker-sync-dest") === "1";
     if (!slot) {
@@ -673,9 +706,14 @@
       }
       activeIndex = index;
       var item = items[index];
-      if (meta) {
-        meta.textContent = item.kind;
-        meta.classList.toggle("is-late", Boolean(item.cancelled));
+      if (lineWrap) {
+        lineWrap.className =
+          "departure__line-wrap departure__line-wrap--" +
+          (item.status || "scheduled");
+        lineWrap.setAttribute("data-ticker-line-wrap", "");
+      }
+      if (lineSr && item.statusLabel) {
+        lineSr.textContent = item.statusLabel;
       }
       if (lineEl && item.line) {
         lineEl.textContent = item.line;
