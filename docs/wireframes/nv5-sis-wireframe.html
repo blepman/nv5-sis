@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="nb">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1220" />
+    <title>NV5-SIS — interaktiv wireframe</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --lift: #121a2b;
+        --line: rgba(232, 238, 247, 0.18);
+        --text: #e8eef7;
+        --muted: #b7c3d6;
+        --accent: #f4c15d;
+        --ok: #7dd3a4;
+        --warn: #f0c674;
+        --late: #ff8a8a;
+        --metro: #ec5b2a;
+        --panel: #101827;
+        --safe-b: env(safe-area-inset-bottom, 0px);
+        --safe-t: env(safe-area-inset-top, 0px);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+
+      body {
+        min-height: 100dvh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding-top: var(--safe-t);
+      }
+
+      .top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--lift) 90%, transparent);
+      }
+
+      .top h1 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .top p {
+        margin: 0.15rem 0 0;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--lift);
+        color: var(--text);
+        border-radius: 0.4rem;
+        padding: 0.45rem 0.7rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button.primary {
+        background: color-mix(in srgb, var(--accent) 25%, var(--lift));
+        border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+        color: var(--accent);
+      }
+
+      .stage-wrap {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 1rem;
+        touch-action: pan-y;
+      }
+
+      .stage {
+        position: relative;
+        width: min(360px, 100%);
+        height: 780px;
+        margin: 0 auto 1rem;
+        background:
+          radial-gradient(120% 80% at 10% -10%, #1a2740 0%, transparent 55%),
+          var(--bg);
+        border: 2px solid #3a4558;
+        border-radius: 1.1rem;
+        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.35);
+        touch-action: none;
+      }
+
+      .box {
+        position: absolute;
+        border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, #666);
+        background: color-mix(in srgb, var(--lift) 85%, transparent);
+        border-radius: 0.45rem;
+        padding: 0.35rem 0.4rem;
+        color: var(--text);
+        font-size: 0.72rem;
+        line-height: 1.25;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
+        touch-action: none;
+        overflow: hidden;
+      }
+
+      .box:active,
+      .box.is-dragging {
+        cursor: grabbing;
+        z-index: 20;
+      }
+
+      .box.is-selected {
+        border-style: solid;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+        z-index: 15;
+      }
+
+      .box__title {
+        font-weight: 700;
+        font-size: 0.78rem;
+        margin-bottom: 0.15rem;
+      }
+
+      .box__meta {
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+        font-size: 0.65rem;
+      }
+
+      .box--status {
+        background: color-mix(in srgb, var(--ok) 35%, var(--lift));
+        border-color: var(--ok);
+        padding: 0;
+      }
+
+      .box--line {
+        background: color-mix(in srgb, var(--metro) 55%, var(--lift));
+        border-color: var(--metro);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+
+      .box--warn {
+        background: color-mix(in srgb, var(--warn) 55%, var(--lift));
+        border-color: var(--warn);
+        color: #111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+      }
+
+      .box--time {
+        text-align: center;
+        border-color: var(--ok);
+      }
+
+      .hint {
+        max-width: 360px;
+        margin: 0 auto;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-align: center;
+      }
+
+      .dock {
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        padding: 0.75rem 1rem calc(0.85rem + var(--safe-b));
+        max-height: min(42dvh, 320px);
+        overflow: auto;
+      }
+
+      .dock__eyebrow {
+        margin: 0 0 0.25rem;
+        color: var(--accent);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .dock h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+
+      .dock .code {
+        display: inline-block;
+        margin: 0 0 0.5rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.3rem;
+        background: #1a2740;
+        color: var(--accent);
+        font-family: ui-monospace, monospace;
+        font-size: 0.78rem;
+      }
+
+      .dock p,
+      .dock li {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.4;
+      }
+
+      .dock p {
+        margin: 0 0 0.45rem;
+      }
+
+      .dock ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+
+      .dock li + li {
+        margin-top: 0.25rem;
+      }
+
+      .empty-doc {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>NV5-SIS wireframe</h1>
+        <p>Trykk en boks for docs. Dra for å flytte. Posisjoner lagres lokalt.</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="btnReset">Nullstill layout</button>
+        <button type="button" class="primary" id="btnExport">Kopier posisjoner</button>
+      </div>
+    </header>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage" aria-label="Wireframe-lerret"></div>
+      <p class="hint">
+        Ingen sesong-temaer i koden — dette speiler den ene kiosk-layouten.
+      </p>
+    </div>
+
+    <aside class="dock" id="dock" aria-live="polite">
+      <p class="empty-doc">
+        Trykk på en boks for å se CSS-klasser, mål og JS-oppførsel.
+      </p>
+    </aside>
+
+    <script>
+      (function () {
+        var STORAGE_KEY = "nv5-sis-wireframe-pos-v1";
+        var stage = document.getElementById("stage");
+        var dock = document.getElementById("dock");
+
+        var catalog = [
+          {
+            id: "header",
+            title: "Header",
+            label: "NV5-SIS + klokke",
+            x: 16,
+            y: 16,
+            w: 328,
+            h: 72,
+            selector: ".board__header / .board__brand / #clock",
+            summary:
+              "Øverste rad i .board-grid (auto | 1fr | auto). Flex: brand til venstre, meny til høyre.",
+            bullets: [
+              "Tittel hardkodet «NV5-SIS» i JS",
+              "Klokke oppdateres hvert sekund",
+              "Padding på .board inkl. safe-area",
+            ],
+          },
+          {
+            id: "menu",
+            title: "Meny-knapp",
+            label: "☰",
+            x: 308,
+            y: 28,
+            w: 28,
+            h: 40,
+            selector: ".menu__toggle → .menu__panel",
+            summary: "Hamburger åpner panel med tre handlinger.",
+            bullets: [
+              "Innstillinger → dialog",
+              "Hent ny tavle → ?sync=main",
+              "Slett lokal lagring",
+            ],
+          },
+          {
+            id: "quay",
+            title: "Holdeplass-header",
+            label: "Quay-navn + retning + sync",
+            x: 16,
+            y: 100,
+            w: 328,
+            h: 56,
+            selector: ".quay-board__header",
+            summary: "Én .quay-board per valgt holdeplass. Subheader har retning og synkalder.",
+            bullets: [
+              ".quay-board__sync: ok <29s, stale ≥29s, error ≥179s",
+              "Flere holdeplasser stables i .boards (gap 1.25rem)",
+            ],
+          },
+          {
+            id: "status",
+            title: "Statusstrek",
+            label: "",
+            x: 24,
+            y: 172,
+            w: 6,
+            h: 168,
+            kind: "status",
+            selector: ".departure__status",
+            summary:
+              "Vertikal skinne i .departure__aside. Høyde følger badge-stacken (linje + ev. avvik), ikke lengre avvikstekst.",
+            bullets: [
+              "realtime → --ok (#7dd3a4)",
+              "scheduled → --warn (#f0c674)",
+              "cancelled → --late (#ff8a8a)",
+              "Bredde: --departure-status-width 0.22rem",
+            ],
+          },
+          {
+            id: "line",
+            title: "Linjenummer",
+            label: "5",
+            x: 38,
+            y: 172,
+            w: 44,
+            h: 78,
+            kind: "line",
+            selector: ".departure__line",
+            summary:
+              "Fyller høyden til .departure__main. Alle featured-rader equaliseres til samme høyde.",
+            bullets: [
+              "Bredde: --departure-line-size 2.75rem (2.3rem landscape)",
+              "Farge fra Entur (inline) eller --metro",
+              "syncDepartureBadges() etter render / resize",
+            ],
+          },
+          {
+            id: "warn",
+            title: "Avviksikon",
+            label: "!",
+            x: 38,
+            y: 258,
+            w: 44,
+            h: 78,
+            kind: "warn",
+            selector: ".departure__situation-icon",
+            summary: "Egen boks under linjenummer, samme bredde/høyde som linjeboksen.",
+            bullets: [
+              "Bare når departure har situations[]",
+              "Gul bakgrunn #f0c674",
+            ],
+          },
+          {
+            id: "main",
+            title: "Avgangsboks",
+            label: "Dest + retning + sist sett",
+            x: 92,
+            y: 172,
+            w: 168,
+            h: 78,
+            selector: ".departure__main / .departure__dest-wrap",
+            summary:
+              "Grid 1fr | auto. min-height 4.1rem. Tekst midtstilles når det er luft; fulle bokser ser fylt ut.",
+            bullets: [
+              "Valgfritt: direction, meta, progress",
+              "showJourneyProgress styrer «Sist sett / Forventet»",
+              "Equaliseres på tvers av featured-rader (cap ~28vh)",
+            ],
+          },
+          {
+            id: "time",
+            title: "Avgangstid",
+            label: "Nå\n+1 min",
+            x: 268,
+            y: 186,
+            w: 64,
+            h: 50,
+            kind: "time",
+            selector: ".departure__time-wrap / .departure__time-stack",
+            summary:
+              "Nå og «X min» midtstilles på samme vertikale linje (align-self: center).",
+            bullets: [
+              "Forsinkelse under tiden ved behov",
+              "is-now / is-delay-warn / is-delay-late",
+            ],
+          },
+          {
+            id: "situation",
+            title: "Avvikstekst",
+            label: "Situasjonsmelding…",
+            x: 92,
+            y: 258,
+            w: 240,
+            h: 78,
+            selector: ".departure__situation",
+            summary:
+              "Rad under main. min-height = main-høyde. Tekst midtstilles vertikalt hvis den ikke fyller boksen.",
+            bullets: [
+              "Roterer hvert 15. sekund ved flere meldinger",
+              "Ikon ligger i badge-kolonnen, ikke her",
+            ],
+          },
+          {
+            id: "featured2",
+            title: "Featured uten avvik",
+            label: "Samme høyde som raden over",
+            x: 16,
+            y: 360,
+            w: 328,
+            h: 90,
+            selector: ".departure (featured)",
+            summary: "N−1 featured-rader der N = elementsPerQuay (innstillinger 2–8).",
+            bullets: [
+              "Uten avvik: bare status + linje + main",
+              "Linjeboks = main-høyde",
+            ],
+          },
+          {
+            id: "ticker",
+            title: "Ticker-rad",
+            label: "Dest  |  ⇅ 3.1rem midtstilt",
+            x: 16,
+            y: 468,
+            w: 328,
+            h: 90,
+            selector: ".departure--ticker / .departure__ticker",
+            summary:
+              "Siste element. Kompakt rulleflate 3.1rem, midtstilt som Nå/min — ikke full bokshøyde (unngår loop).",
+            bullets: [
+              "Inntil compactDepartures (4) tider",
+              "14 px/s, fade topp = bunn",
+              "Kan bytte linje/dest ved multi",
+            ],
+          },
+          {
+            id: "footer",
+            title: "Footer SHA",
+            label: "server ·····  main ·····",
+            x: 16,
+            y: 700,
+            w: 328,
+            h: 44,
+            selector: "#buildFooter.board__footer",
+            summary: "Siste 4 tegn av server- og main-commit. Styres av showBuildInfo.",
+            bullets: [
+              "Meta nv5-server-sha / nv5-board-sha fra PHP render",
+              "Kan slås av i Innstillinger",
+            ],
+          },
+        ];
+
+        var selectedId = null;
+        var drag = null;
+
+        function loadPositions() {
+          try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return {};
+            return JSON.parse(raw) || {};
+          } catch (e) {
+            return {};
+          }
+        }
+
+        function savePositions() {
+          var map = {};
+          catalog.forEach(function (item) {
+            map[item.id] = { x: item.x, y: item.y, w: item.w, h: item.h };
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+        }
+
+        function applySaved() {
+          var saved = loadPositions();
+          catalog.forEach(function (item) {
+            var s = saved[item.id];
+            if (!s) return;
+            if (typeof s.x === "number") item.x = s.x;
+            if (typeof s.y === "number") item.y = s.y;
+            if (typeof s.w === "number") item.w = s.w;
+            if (typeof s.h === "number") item.h = s.h;
+          });
+        }
+
+        function clamp(item) {
+          var maxX = stage.clientWidth - item.w;
+          var maxY = stage.clientHeight - item.h;
+          item.x = Math.max(0, Math.min(maxX, item.x));
+          item.y = Math.max(0, Math.min(maxY, item.y));
+        }
+
+        function renderDoc(item) {
+          if (!item) {
+            dock.innerHTML =
+              '<p class="empty-doc">Trykk på en boks for å se CSS-klasser, mål og JS-oppførsel.</p>';
+            return;
+          }
+          var bullets = (item.bullets || [])
+            .map(function (b) {
+              return "<li>" + escapeHtml(b) + "</li>";
+            })
+            .join("");
+          dock.innerHTML =
+            '<p class="dock__eyebrow">Dokumentasjon</p>' +
+            "<h2>" +
+            escapeHtml(item.title) +
+            "</h2>" +
+            '<span class="code">' +
+            escapeHtml(item.selector) +
+            "</span>" +
+            "<p>" +
+            escapeHtml(item.summary) +
+            "</p>" +
+            (bullets ? "<ul>" + bullets + "</ul>" : "") +
+            "<p style=\"margin-top:0.65rem;font-size:0.75rem\">Posisjon: " +
+            Math.round(item.x) +
+            "," +
+            Math.round(item.y) +
+            " · " +
+            Math.round(item.w) +
+            "×" +
+            Math.round(item.h) +
+            "px</p>";
+        }
+
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function paint() {
+          stage.innerHTML = "";
+          catalog.forEach(function (item) {
+            clamp(item);
+            var el = document.createElement("div");
+            el.className = "box";
+            if (item.kind) el.className += " box--" + item.kind;
+            if (item.id === selectedId) el.classList.add("is-selected");
+            el.style.left = item.x + "px";
+            el.style.top = item.y + "px";
+            el.style.width = item.w + "px";
+            el.style.height = item.h + "px";
+            el.dataset.id = item.id;
+            el.innerHTML =
+              '<div class="box__title">' +
+              escapeHtml(item.label || item.title) +
+              "</div>" +
+              (item.kind === "line" || item.kind === "warn" || item.kind === "status"
+                ? ""
+                : '<div class="box__meta">' + escapeHtml(item.id) + "</div>");
+            stage.appendChild(el);
+          });
+        }
+
+        function itemById(id) {
+          for (var i = 0; i < catalog.length; i++) {
+            if (catalog[i].id === id) return catalog[i];
+          }
+          return null;
+        }
+
+        function select(id) {
+          selectedId = id;
+          paint();
+          renderDoc(itemById(id));
+        }
+
+        function pointerDown(event) {
+          var target = event.target.closest(".box");
+          if (!target) return;
+          event.preventDefault();
+          var id = target.dataset.id;
+          var item = itemById(id);
+          if (!item) return;
+          select(id);
+          var rect = stage.getBoundingClientRect();
+          drag = {
+            id: id,
+            ox: event.clientX - rect.left - item.x,
+            oy: event.clientY - rect.top - item.y,
+            moved: false,
+          };
+          target.classList.add("is-dragging");
+          if (target.setPointerCapture) {
+            target.setPointerCapture(event.pointerId);
+          }
+        }
+
+        function pointerMove(event) {
+          if (!drag) return;
+          var item = itemById(drag.id);
+          if (!item) return;
+          var rect = stage.getBoundingClientRect();
+          var nx = event.clientX - rect.left - drag.ox;
+          var ny = event.clientY - rect.top - drag.oy;
+          if (Math.abs(nx - item.x) > 2 || Math.abs(ny - item.y) > 2) {
+            drag.moved = true;
+          }
+          item.x = nx;
+          item.y = ny;
+          clamp(item);
+          var el = stage.querySelector('.box[data-id="' + item.id + '"]');
+          if (el) {
+            el.style.left = item.x + "px";
+            el.style.top = item.y + "px";
+            el.classList.add("is-dragging");
+          }
+          renderDoc(item);
+        }
+
+        function pointerUp() {
+          if (!drag) return;
+          savePositions();
+          drag = null;
+          paint();
+          renderDoc(itemById(selectedId));
+        }
+
+        document.getElementById("btnReset").addEventListener("click", function () {
+          localStorage.removeItem(STORAGE_KEY);
+          location.reload();
+        });
+
+        document.getElementById("btnExport").addEventListener("click", function () {
+          var payload = JSON.stringify(
+            catalog.map(function (item) {
+              return {
+                id: item.id,
+                title: item.title,
+                selector: item.selector,
+                x: Math.round(item.x),
+                y: Math.round(item.y),
+                w: Math.round(item.w),
+                h: Math.round(item.h),
+              };
+            }),
+            null,
+            2
+          );
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(payload).then(
+              function () {
+                alert("Posisjoner kopiert til utklippstavlen.");
+              },
+              function () {
+                window.prompt("Kopier JSON:", payload);
+              }
+            );
+          } else {
+            window.prompt("Kopier JSON:", payload);
+          }
+        });
+
+        stage.addEventListener("pointerdown", pointerDown);
+        window.addEventListener("pointermove", pointerMove);
+        window.addEventListener("pointerup", pointerUp);
+        window.addEventListener("pointercancel", pointerUp);
+
+        applySaved();
+        paint();
+        renderDoc(null);
+      })();
+    </script>
+  </body>
+</html>
