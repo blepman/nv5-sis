@@ -1027,18 +1027,18 @@
       }
     }
 
-    // Steg = viewport-høyde, så neste tid kommer inn i bunnen
-    // i det forrige treffer toppgrensen.
+    // Hvert element = hele rulleflaten, så topp- og bunngrense er like.
     function layoutTicker() {
-      var first = track.children[0];
       viewHeight = slot.clientHeight;
-      if (!first || viewHeight <= 0) {
+      if (!track.children.length || viewHeight <= 0) {
         return false;
       }
-      var itemHeight = first.getBoundingClientRect().height;
-      var gap = Math.max(4, viewHeight - itemHeight);
-      track.style.gap = gap + "px";
-      step = itemHeight + gap;
+      Array.prototype.forEach.call(track.children, function (el) {
+        el.style.minHeight = viewHeight + "px";
+        el.style.height = viewHeight + "px";
+      });
+      track.style.gap = "0px";
+      step = viewHeight;
       return step > 0;
     }
 
@@ -1285,9 +1285,9 @@
         return renderQuayBoard(entry, now, animate);
       })
       .join("");
-    startTickers();
     requestAnimationFrame(function () {
       syncDepartureBadges();
+      startTickers();
     });
   }
 
@@ -1963,6 +1963,7 @@
       clearTimeout(badgeResizeTimer);
       badgeResizeTimer = setTimeout(function () {
         syncDepartureBadges();
+        startTickers();
       }, 120);
     });
     requestWakeLock();
