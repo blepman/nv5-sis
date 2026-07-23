@@ -1203,6 +1203,7 @@
     }
     if (els.syncServer) {
       els.syncServer.addEventListener("click", function () {
+        closeSettings();
         forceGithubSync("server");
       });
     }

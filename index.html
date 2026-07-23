@@ -63,18 +63,10 @@
             <button
               type="button"
               class="menu__item"
-              id="syncServer"
-              title="Henter PHP/serverfiler fra GitHub-branchen server"
-            >
-              Bygg siden på nytt
-            </button>
-            <button
-              type="button"
-              class="menu__item"
               id="syncBoard"
               title="Henter HTML/CSS/JS fra GitHub-branchen main"
             >
-              Bygg tavlen på nytt
+              Hent ny tavle
             </button>
           </div>
         </div>
@@ -126,10 +118,26 @@
             <option value="3600">Hver time</option>
           </select>
           <small>
-            Styrer hvor ofte tavlen (HTML/CSS/JS) hentes fra main. Serverfiler
-            sjekkes separat hver time, eller via «Bygg siden på nytt».
+            Styrer hvor ofte tavlen (HTML/CSS/JS) hentes fra main. Bruk
+            «Hent ny tavle» i menyen for å hente med en gang.
           </small>
         </label>
+
+        <div class="settings__field">
+          <span>Serverfiler (server-branch)</span>
+          <button
+            type="button"
+            class="settings__action"
+            id="syncServer"
+            title="Henter PHP/serverfiler fra GitHub-branchen server"
+          >
+            Bygg siden på nytt
+          </button>
+          <small>
+            Sjekkes automatisk hver time. Bruk knappen bare når serverkoden er
+            endret.
+          </small>
+        </div>
 
         <section class="settings__section" aria-labelledby="selectedQuaysTitle">
           <h3 id="selectedQuaysTitle">Valgte holdeplasser</h3>

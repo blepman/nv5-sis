@@ -526,6 +526,27 @@ body {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
 }
 
+.settings__action {
+  appearance: none;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings__action:hover,
+.settings__action:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+
 .settings__field {
   display: flex;
   flex-direction: column;

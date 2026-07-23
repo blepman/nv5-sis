@@ -24,9 +24,8 @@ Feature-branches:
 
 Hamburgermeny øverst til høyre:
 
-- **Innstillinger** — holdeplasser, linjer, elementer, intervall for `main`
-- **Bygg siden på nytt** — tvinger sync av `server` (`?sync=server`)
-- **Bygg tavlen på nytt** — tvinger sync av `main` (`?sync=main`)
+- **Innstillinger** — holdeplasser, linjer, elementer, intervall for `main`, og **Bygg siden på nytt** (`?sync=server`)
+- **Hent ny tavle** — tvinger sync av `main` (`?sync=main`)
 
 `?sync=both` (eller `?sync=1`) synker begge.
 
