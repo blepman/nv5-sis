@@ -267,14 +267,42 @@
     return window.NV5Entur.journeyProgressLabel(departure, now) || "";
   }
 
-  function departureMeta(departure, includeDirection, now) {
+  function delaySecondsOf(departure) {
+    if (
+      typeof departure.delaySeconds === "number" &&
+      isFinite(departure.delaySeconds)
+    ) {
+      return departure.delaySeconds;
+    }
+    if (departure.expected && departure.aimed) {
+      return Math.round(
+        (departure.expected.getTime() - departure.aimed.getTime()) / 1000
+      );
+    }
+    return 0;
+  }
+
+  /** Gul >29s, rød >3 min. Tom streng = ingen forsinkelsesfarge. */
+  function delayTimeClass(departure) {
+    if (!departure || departure.cancelled) {
+      return departure && departure.cancelled ? "is-delay-late" : "";
+    }
+    var delay = delaySecondsOf(departure);
+    if (delay > 180) {
+      return "is-delay-late";
+    }
+    if (delay > 29) {
+      return "is-delay-warn";
+    }
+    return "";
+  }
+
+  function departureMeta(departure, includeDirection) {
     var parts = [];
     if (departure.serviceRun) {
       parts.push("Tjenestekjøring");
     } else if (departure.cancelled) {
       parts.push("Innstilt");
-    } else if (departure.delayMinutes >= 2) {
-      parts.push("Forsinket " + departure.delayMinutes + " min");
     } else if (departure.realtime) {
       parts.push("Sanntid");
     } else {
@@ -282,10 +310,6 @@
     }
     if (includeDirection && departure.quayDescription) {
       parts.push(departure.quayDescription);
-    }
-    var progress = journeyProgressLabel(departure, now || new Date());
-    if (progress) {
-      parts.push(progress);
     }
     if (
       settings.showOccupancy &&
@@ -350,9 +374,17 @@
   function renderDepartureRow(departure, now, includeDirection, animate) {
     var timeLabel = formatDepartureLabel(departure, now);
     var isNow = timeLabel === "Nå";
-    var meta = departureMeta(departure, includeDirection, now);
+    var meta = departureMeta(departure, includeDirection);
     if (departure.situations[0] && !departure.serviceRun) {
       meta += " · " + departure.situations[0];
+    }
+    var progress = journeyProgressLabel(departure, now);
+    var delayClass = delayTimeClass(departure);
+    var timeClasses = "departure__time";
+    if (delayClass) {
+      timeClasses += " " + delayClass;
+    } else if (isNow) {
+      timeClasses += " is-now";
     }
 
     return (
@@ -371,13 +403,18 @@
       escapeHtml(departure.destination) +
       "</div>" +
       '<div class="departure__meta' +
-      (departure.delayMinutes >= 2 || departure.cancelled ? " is-late" : "") +
+      (departure.cancelled ? " is-late" : "") +
       '">' +
       escapeHtml(meta) +
       "</div>" +
+      (progress
+        ? '<div class="departure__progress">' +
+          escapeHtml(progress) +
+          "</div>"
+        : "") +
       "</div>" +
-      '<span class="departure__time' +
-      (isNow ? " is-now" : "") +
+      '<span class="' +
+      timeClasses +
       '">' +
       escapeHtml(timeLabel) +
       "</span>" +
@@ -413,6 +450,7 @@
           ? "Sanntid"
           : "Rutetid";
       var time = formatDepartureLabel(dep, now);
+      var delayClass = delayTimeClass(dep);
       return {
         time: time,
         line: dep.line || "–",
@@ -420,7 +458,8 @@
         textColour: dep.textColour || "",
         destination: dep.destination || "",
         kind: kind,
-        late: dep.delayMinutes >= 2 || dep.cancelled,
+        cancelled: Boolean(dep.cancelled),
+        delayClass: delayClass,
         now: time === "Nå",
         label: multiLine ? (dep.line || "–") + " · " + time : time,
       };
@@ -448,13 +487,17 @@
       escapeHtml(destinationLabel) +
       "</div>" +
       '<div class="departure__meta' +
-      (items[0].late ? " is-late" : "") +
+      (items[0].cancelled ? " is-late" : "") +
       '" data-ticker-meta>' +
       escapeHtml(items[0].kind) +
       "</div>" +
       "</div>" +
       '<span class="departure__time departure__ticker' +
-      (items[0].now ? " is-now" : "") +
+      (items[0].delayClass
+        ? " " + items[0].delayClass
+        : items[0].now
+          ? " is-now"
+          : "") +
       '" aria-live="off"></span>' +
       "</li>"
     );
@@ -498,6 +541,11 @@
       if (item.line && item.label && item.label !== item.time) {
         el.className += " departure__ticker-item--with-line";
       }
+      if (item.delayClass) {
+        el.className += " " + item.delayClass;
+      } else if (item.now) {
+        el.className += " is-now";
+      }
       el.textContent = item.label || item.time;
       el.setAttribute("data-item-index", String(index % items.length));
       track.appendChild(el);
@@ -522,7 +570,7 @@
       var item = items[index];
       if (meta) {
         meta.textContent = item.kind;
-        meta.classList.toggle("is-late", Boolean(item.late));
+        meta.classList.toggle("is-late", Boolean(item.cancelled));
       }
       if (lineEl && item.line) {
         lineEl.textContent = item.line;
@@ -537,7 +585,12 @@
       if (destEl && multiDestination && item.destination) {
         destEl.textContent = item.destination;
       }
-      slot.classList.toggle("is-now", Boolean(item.now));
+      slot.classList.remove("is-now", "is-delay-warn", "is-delay-late");
+      if (item.delayClass) {
+        slot.classList.add(item.delayClass);
+      } else if (item.now) {
+        slot.classList.add("is-now");
+      }
     }
 
     // Steg = viewport-høyde, så neste tid kommer inn i bunnen
@@ -681,7 +734,8 @@
               dep.expected ? dep.expected.toISOString() : "",
               dep.cancelled ? "1" : "0",
               dep.realtime ? "1" : "0",
-              String(dep.delayMinutes || 0),
+              String(delaySecondsOf(dep)),
+              delayTimeClass(dep),
               dep.serviceRun ? "t" : "",
               journeyProgressLabel(dep, now),
               dep.occupancyStatus || "",

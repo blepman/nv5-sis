@@ -420,6 +420,14 @@ body {
   color: var(--late);
 }
 
+.departure__progress {
+  margin-top: 0.15rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
 .departure--service-run {
   opacity: 0.72;
 }
@@ -465,8 +473,19 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.departure__time.is-now {
+.departure__time.is-now,
+.departure__ticker-item.is-now {
   color: var(--ok);
+}
+
+.departure__time.is-delay-warn,
+.departure__ticker-item.is-delay-warn {
+  color: var(--warn);
+}
+
+.departure__time.is-delay-late,
+.departure__ticker-item.is-delay-late {
+  color: var(--late);
 }
 
 .board__status {
