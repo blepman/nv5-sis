@@ -1172,11 +1172,21 @@
     els.stopSearch.value = "";
   }
 
+  function isMenuOpen() {
+    return Boolean(els.menuPanel && !els.menuPanel.hidden);
+  }
+
   function setMenuOpen(open) {
     if (!els.menuToggle || !els.menuPanel) {
       return;
     }
-    els.menuPanel.hidden = !open;
+    if (open) {
+      els.menuPanel.hidden = false;
+      els.menuPanel.removeAttribute("hidden");
+    } else {
+      els.menuPanel.hidden = true;
+      els.menuPanel.setAttribute("hidden", "");
+    }
     els.menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
@@ -1201,8 +1211,9 @@
   function bindSettings() {
     if (els.menuToggle) {
       els.menuToggle.addEventListener("click", function (event) {
+        event.preventDefault();
         event.stopPropagation();
-        setMenuOpen(els.menuPanel.hidden);
+        setMenuOpen(!isMenuOpen());
       });
     }
     if (els.syncServer) {
@@ -1215,8 +1226,9 @@
         forceGithubSync("main");
       });
     }
+    // Lukk meny ved klikk utenfor (etter denne event-runden, så toggle ikke lukker med en gang)
     document.addEventListener("click", function (event) {
-      if (!els.menuPanel || els.menuPanel.hidden) {
+      if (!isMenuOpen()) {
         return;
       }
       if (event.target.closest("#appMenu")) {
