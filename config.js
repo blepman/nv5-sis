@@ -21,6 +21,10 @@ window.NV5_SIS = {
   // Elementer per quay: N-1 enkeltavganger + siste element = neste 3–4 avganger
   elementsPerQuay: 3,
   compactDepartures: 4,
+  // Featured-avganger: posisjon i ruten, belegg, tjenestekjøring
+  showJourneyProgress: true,
+  showOccupancy: true,
+  showServiceRuns: true,
   // Hvor ofte PHP skal sjekke GitHub (sekunder). 0 = ved hvert sidebesøk.
   githubCheckIntervalSeconds: 300,
   githubIntervalCookie: "nv5_github_interval",

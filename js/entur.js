@@ -4,6 +4,7 @@
     aimedDepartureTime
     realtime
     cancellation
+    occupancyStatus
     destinationDisplay {
       frontText
     }
@@ -13,6 +14,7 @@
       publicCode
     }
     serviceJourney {
+      id
       line {
         id
         publicCode
@@ -31,6 +33,39 @@
       }
     }
   `;
+
+  const JOURNEY_PROGRESS_QUERY = `
+    query JourneyProgress($id: String!) {
+      serviceJourney(id: $id) {
+        id
+        estimatedCalls {
+          actualArrivalTime
+          actualDepartureTime
+          stopPositionInPattern
+          quay {
+            id
+            name
+          }
+        }
+      }
+    }
+  `;
+
+  const OCCUPANCY_LABELS = {
+    empty: "God plass",
+    manySeatsAvailable: "God plass",
+    fewSeatsAvailable: "Få seter",
+    standingRoomOnly: "Ståplass",
+    crushedStandingRoomOnly: "Ståplass",
+    full: "Full",
+    notAcceptingPassengers: "Tar ikke passasjerer",
+  };
+
+  const SERVICE_RUN_PATTERN =
+    /tjenest|ikke i trafikk|tomkj|depot|garasje/;
+
+  const progressCache = {};
+  const PROGRESS_CACHE_MS = 25000;
 
   const QUAY_QUERY = `
     query QuayDepartures($id: String!, $numberOfDepartures: Int!) {
@@ -90,6 +125,117 @@
 
   function modeLabel(mode) {
     return MODE_LABELS[mode] || mode || "";
+  }
+
+  function occupancyLabel(status) {
+    if (!status || status === "noData") {
+      return "";
+    }
+    return OCCUPANCY_LABELS[status] || "";
+  }
+
+  function isServiceRun(destination, occupancyStatus) {
+    if (occupancyStatus === "notAcceptingPassengers") {
+      return true;
+    }
+    return SERVICE_RUN_PATTERN.test(String(destination || "").toLowerCase());
+  }
+
+  function deriveJourneyProgress(calls) {
+    if (!calls || !calls.length) {
+      return null;
+    }
+    var idx = -1;
+    for (var i = 0; i < calls.length; i++) {
+      if (calls[i].actualArrivalTime || calls[i].actualDepartureTime) {
+        idx = i;
+      }
+    }
+    if (idx < 0) {
+      return null;
+    }
+    var call = calls[idx];
+    var stopName = (call.quay && call.quay.name) || "";
+    if (!stopName) {
+      return null;
+    }
+    if (call.actualDepartureTime) {
+      var next = calls[idx + 1];
+      var nextName = (next && next.quay && next.quay.name) || "";
+      if (nextName) {
+        return {
+          state: "towards",
+          stopName: stopName,
+          nextStopName: nextName,
+          label: "Mot " + nextName,
+        };
+      }
+      return {
+        state: "passed",
+        stopName: stopName,
+        nextStopName: "",
+        label: "Passerte " + stopName,
+      };
+    }
+    return {
+      state: "at",
+      stopName: stopName,
+      nextStopName: "",
+      label: "På " + stopName,
+    };
+  }
+
+  async function fetchJourneyProgress(config, serviceJourneyId) {
+    if (!serviceJourneyId) {
+      return null;
+    }
+    var cached = progressCache[serviceJourneyId];
+    var now = Date.now();
+    if (cached && now - cached.at < PROGRESS_CACHE_MS) {
+      return cached.progress;
+    }
+    try {
+      var data = await graphql(config, JOURNEY_PROGRESS_QUERY, {
+        id: serviceJourneyId,
+      });
+      var journey = data && data.serviceJourney;
+      var progress = deriveJourneyProgress(
+        (journey && journey.estimatedCalls) || []
+      );
+      progressCache[serviceJourneyId] = { at: now, progress: progress };
+      return progress;
+    } catch (error) {
+      console.warn("Kunne ikke hente turprogress", serviceJourneyId, error);
+      if (cached) {
+        return cached.progress;
+      }
+      return null;
+    }
+  }
+
+  async function fetchJourneyProgressMany(config, serviceJourneyIds) {
+    var unique = [];
+    var seen = {};
+    (serviceJourneyIds || []).forEach(function (id) {
+      if (id && !seen[id]) {
+        seen[id] = true;
+        unique.push(id);
+      }
+    });
+    var results = await Promise.allSettled(
+      unique.map(function (id) {
+        return fetchJourneyProgress(config, id).then(function (progress) {
+          return { id: id, progress: progress };
+        });
+      })
+    );
+    var map = {};
+    results.forEach(function (outcome) {
+      if (outcome.status === "fulfilled" && outcome.value) {
+        map[outcome.value.id] = outcome.value.progress;
+      }
+    });
+    return map;
   }
 
   async function fetchWithTimeout(url, options, timeoutMs) {
@@ -379,12 +525,16 @@
     const presentation = line.presentation || {};
 
     const quay = call.quay || {};
+    const destination =
+      (call.destinationDisplay && call.destinationDisplay.frontText) ||
+      "Ukjent";
+    const occupancyStatus = call.occupancyStatus || "noData";
+    const serviceJourneyId =
+      (call.serviceJourney && call.serviceJourney.id) || "";
     return {
       lineId: line.id || "",
       line: line.publicCode || "–",
-      destination:
-        (call.destinationDisplay && call.destinationDisplay.frontText) ||
-        "Ukjent",
+      destination: destination,
       mode: line.transportMode || "",
       colour: presentation.colour ? "#" + presentation.colour : "",
       textColour: presentation.textColour ? "#" + presentation.textColour : "",
@@ -396,6 +546,11 @@
       situations: situations,
       quayDescription: quay.description || "",
       quayCode: quay.publicCode || "",
+      serviceJourneyId: serviceJourneyId,
+      occupancyStatus: occupancyStatus,
+      occupancyLabel: occupancyLabel(occupancyStatus),
+      serviceRun: isServiceRun(destination, occupancyStatus),
+      progressLabel: "",
     };
   }
 
@@ -405,6 +560,11 @@
     fetchStopQuays: fetchStopQuays,
     fetchQuayLines: fetchQuayLines,
     fetchPlaceLines: fetchPlaceLines,
+    fetchJourneyProgress: fetchJourneyProgress,
+    fetchJourneyProgressMany: fetchJourneyProgressMany,
+    deriveJourneyProgress: deriveJourneyProgress,
     modeLabel: modeLabel,
+    occupancyLabel: occupancyLabel,
+    isServiceRun: isServiceRun,
   };
 })(window);
