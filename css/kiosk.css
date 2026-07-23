@@ -407,8 +407,8 @@ body {
 .departure__ticker {
   position: relative;
   width: 100%;
-  height: 2.75rem;
-  max-height: 2.75rem;
+  height: 3.35rem;
+  max-height: 3.35rem;
   overflow: hidden;
   display: block;
   text-align: center;
@@ -416,15 +416,15 @@ body {
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 0.35rem,
-    #000 calc(100% - 0.35rem),
+    #000 0.3rem,
+    #000 calc(100% - 0.3rem),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 0.35rem,
-    #000 calc(100% - 0.35rem),
+    #000 0.3rem,
+    #000 calc(100% - 0.3rem),
     transparent 100%
   );
 }
@@ -439,16 +439,39 @@ body {
 .departure__ticker-item {
   position: static;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  height: 1.15em;
+  gap: 0.08rem;
+  min-height: 2.55rem;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.departure__ticker-time {
+  display: block;
   font-family: var(--mono);
   font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.departure__ticker-delay {
+  display: block;
+  min-height: 0.86rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.departure__ticker-delay.is-empty {
+  visibility: hidden;
 }
 
 .departure__line-wrap {
@@ -640,19 +663,21 @@ body {
 }
 
 .departure__time.is-now,
-.departure__ticker-item.is-now {
+.departure__ticker-time.is-now {
   color: var(--ok);
 }
 
 .departure__time.is-delay-warn,
-.departure__ticker-item.is-delay-warn,
-.departure__delay.is-delay-warn {
+.departure__ticker-time.is-delay-warn,
+.departure__delay.is-delay-warn,
+.departure__ticker-delay.is-delay-warn {
   color: var(--warn);
 }
 
 .departure__time.is-delay-late,
-.departure__ticker-item.is-delay-late,
-.departure__delay.is-delay-late {
+.departure__ticker-time.is-delay-late,
+.departure__delay.is-delay-late,
+.departure__ticker-delay.is-delay-late {
   color: var(--late);
 }
 

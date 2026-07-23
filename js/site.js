@@ -747,7 +747,6 @@
       ? first.destination || "Neste avganger"
       : uniqueDestinations[0] || "Neste avganger";
     var firstDelayClass = items[0].delayClass || "";
-    var firstDelayLabel = items[0].delayLabel || "";
     var firstStatus = items[0].status || "scheduled";
 
     return (
@@ -766,22 +765,8 @@
       "</div>" +
       "</div>" +
       '<div class="departure__time-wrap">' +
-      '<div class="departure__time-stack">' +
-      '<span class="departure__time departure__ticker' +
-      (firstDelayClass
-        ? " " + firstDelayClass
-        : items[0].now
-          ? " is-now"
-          : "") +
-      '" aria-live="off"></span>' +
-      '<span class="departure__delay' +
-      (firstDelayClass ? " " + firstDelayClass : "") +
-      '" data-ticker-delay' +
-      (firstDelayLabel ? "" : " hidden") +
-      ">" +
-      escapeHtml(firstDelayLabel) +
-      "</span>" +
-      "</div></div>" +
+      '<span class="departure__ticker" aria-live="off"></span>' +
+      "</div>" +
       "</li>"
     );
   }
@@ -807,7 +792,6 @@
       return;
     }
     var slot = node.querySelector(".departure__ticker");
-    var delayEl = node.querySelector("[data-ticker-delay]");
     var lineWrap = node.querySelector("[data-ticker-line-wrap]");
     var lineEl = lineWrap
       ? lineWrap.querySelector(".departure__line")
@@ -827,13 +811,31 @@
     sequence.forEach(function (item, index) {
       var el = document.createElement("span");
       el.className = "departure__ticker-item";
-      if (item.delayClass) {
-        el.className += " " + item.delayClass;
-      } else if (item.now) {
-        el.className += " is-now";
-      }
-      el.textContent = item.time;
       el.setAttribute("data-item-index", String(index % items.length));
+
+      var timeEl = document.createElement("span");
+      timeEl.className = "departure__ticker-time";
+      if (item.delayClass) {
+        timeEl.className += " " + item.delayClass;
+      } else if (item.now) {
+        timeEl.className += " is-now";
+      }
+      timeEl.textContent = item.time;
+
+      var delaySpan = document.createElement("span");
+      delaySpan.className = "departure__ticker-delay";
+      if (item.delayClass) {
+        delaySpan.className += " " + item.delayClass;
+      }
+      if (item.delayLabel) {
+        delaySpan.textContent = item.delayLabel;
+      } else {
+        delaySpan.className += " is-empty";
+        delaySpan.textContent = "\u00a0";
+      }
+
+      el.appendChild(timeEl);
+      el.appendChild(delaySpan);
       track.appendChild(el);
     });
     slot.innerHTML = "";
@@ -878,27 +880,6 @@
       }
       if (destEl && syncDestination && item.destination) {
         destEl.textContent = item.destination;
-      }
-      if (delayEl) {
-        delayEl.className = "departure__delay";
-        if (item.delayClass) {
-          delayEl.className += " " + item.delayClass;
-        }
-        if (item.delayLabel) {
-          delayEl.textContent = item.delayLabel;
-          delayEl.hidden = false;
-          delayEl.removeAttribute("hidden");
-        } else {
-          delayEl.textContent = "";
-          delayEl.hidden = true;
-          delayEl.setAttribute("hidden", "");
-        }
-      }
-      slot.classList.remove("is-now", "is-delay-warn", "is-delay-late");
-      if (item.delayClass) {
-        slot.classList.add(item.delayClass);
-      } else if (item.now) {
-        slot.classList.add("is-now");
       }
     }
 
