@@ -22,8 +22,11 @@ Options -Indexes
 </IfModule>
 
 # Ikke kjør PHP under content/ (tavlefiler skal være statiske)
+# Katalogtreff på content/ skal ikke brukes som app-URL (PWA start_url er /sis/)
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^content/index\.html$ /sis/ [R=302,L]
+  RewriteRule ^content/?$ /sis/ [R=302,L]
   RewriteRule ^content/.*\.php$ - [F,L]
 </IfModule>
 
