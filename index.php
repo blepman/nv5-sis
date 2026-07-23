@@ -34,15 +34,18 @@ $forceServerSync = in_array($syncParam, ['server', 'both', '1', 'all'], true);
 $forceBoardSync = in_array($syncParam, ['main', 'board', 'both', '1', 'all'], true);
 
 $root = __DIR__;
+$stateDir = ensure_state_dir($root);
+migrate_and_scrub_webroot_state($root, $stateDir);
+
 $content = $root . '/content';
 $contentTmp = $root . '/content.tmp';
-$boardShaFile = $root . '/.last-sha';
-$boardCheckFile = $root . '/.last-check';
-$boardLockFile = $root . '/.sync.lock';
+$boardShaFile = $stateDir . '/board-sha';
+$boardCheckFile = $stateDir . '/board-check';
+$boardLockFile = $stateDir . '/board.lock';
 
-$serverShaFile = $root . '/.server-sha';
-$serverCheckFile = $root . '/.server-check';
-$serverLockFile = $root . '/.server.lock';
+$serverShaFile = $stateDir . '/server-sha';
+$serverCheckFile = $stateDir . '/server-check';
+$serverLockFile = $stateDir . '/server.lock';
 
 try {
     // 1) Speil server-branchen inn i /sis/ (uten å røre content/)
@@ -152,6 +155,77 @@ function normalize_board_interval(int $seconds): int
         return 60;
     }
     return min(86400, $seconds);
+}
+
+/**
+ * State/lock utenfor webroot — nginx trenger ikke egne deny-regler for disse.
+ * Bruker system-temp (ikke sibling av /sis/, som ofte fortsatt er public).
+ */
+function ensure_state_dir(string $root): string
+{
+    $candidates = [
+        sys_get_temp_dir() . '/nv5-sis-' . substr(hash('sha256', $root), 0, 16),
+        // Fallback hvis temp er utilgjengelig (sjeldent)
+        dirname($root) . '/.nv5-sis-state-' . substr(hash('sha256', $root), 0, 8),
+    ];
+    foreach ($candidates as $dir) {
+        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            continue;
+        }
+        if (is_dir($dir) && is_writable($dir)) {
+            return $dir;
+        }
+    }
+    throw new RuntimeException('Kunne ikke lage state-mappe utenfor webroot');
+}
+
+/**
+ * Flytt gamle state-filer ut av /sis/ og fjern README/.gitignore som ikke skal serveres.
+ *
+ * @return array<string, string> webroot-navn => state-filnavn
+ */
+function legacy_webroot_state_map(): array
+{
+    return [
+        '.last-sha' => 'board-sha',
+        '.last-check' => 'board-check',
+        '.sync.lock' => 'board.lock',
+        '.server-sha' => 'server-sha',
+        '.server-check' => 'server-check',
+        '.server.lock' => 'server.lock',
+    ];
+}
+
+/**
+ * @return list<string>
+ */
+function server_sync_skip_web(): array
+{
+    return ['README.md', '.gitignore'];
+}
+
+function migrate_and_scrub_webroot_state(string $root, string $stateDir): void
+{
+    foreach (legacy_webroot_state_map() as $oldName => $newName) {
+        $from = $root . '/' . $oldName;
+        $to = $stateDir . '/' . $newName;
+        if (is_file($from)) {
+            if (!is_file($to)) {
+                if (!@rename($from, $to)) {
+                    @copy($from, $to);
+                    @unlink($from);
+                }
+            } else {
+                @unlink($from);
+            }
+        }
+    }
+    foreach (server_sync_skip_web() as $name) {
+        $path = $root . '/' . $name;
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
 }
 
 /**
@@ -466,6 +540,7 @@ function server_sync_preserve(): array
         'content',
         'content.tmp',
         'content.old',
+        // Legacy webroot-state (skrubbes bort; ikke overskriv hvis de dukker opp)
         '.last-sha',
         '.last-check',
         '.sync.lock',
@@ -525,8 +600,9 @@ function sync_server_branch(
         }
 
         $preserve = array_fill_keys(server_sync_preserve(), true);
+        $skipWeb = array_fill_keys(server_sync_skip_web(), true);
         foreach (scandir($source) ?: [] as $item) {
-            if ($item === '.' || $item === '..' || isset($preserve[$item])) {
+            if ($item === '.' || $item === '..' || isset($preserve[$item]) || isset($skipWeb[$item])) {
                 continue;
             }
             if (!is_safe_relative_path($item)) {
@@ -541,6 +617,14 @@ function sync_server_branch(
                 copy_tree($from, $to);
             } elseif (is_file($from)) {
                 copy_atomic($from, $to);
+            }
+        }
+
+        // Fjern eventuelle README/.gitignore som lå igjen fra tidligere speil
+        foreach (server_sync_skip_web() as $name) {
+            $leftover = $root . '/' . $name;
+            if (is_file($leftover)) {
+                @unlink($leftover);
             }
         }
 
