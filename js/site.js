@@ -635,7 +635,15 @@
     if (!scope) {
       return;
     }
-    scope.querySelectorAll(".departure").forEach(function (row) {
+    var rows = scope.querySelectorAll(".departure");
+    if (!rows.length) {
+      return;
+    }
+
+    // 1) Nullstill, mål naturlig høyde, sett alle avgangsbokser til samme maks
+    var mains = [];
+    var maxMain = 0;
+    rows.forEach(function (row) {
       var main = row.querySelector(".departure__main");
       var line = row.querySelector(".departure__line");
       var warn = row.querySelector(".departure__situation-icon");
@@ -643,6 +651,8 @@
       if (!main || !line) {
         return;
       }
+      main.style.minHeight = "";
+      main.style.height = "";
       line.style.height = "";
       line.style.minHeight = "";
       if (warn) {
@@ -653,20 +663,39 @@
       if (situation) {
         situation.style.minHeight = "";
       }
-      var h = Math.round(main.getBoundingClientRect().height);
-      if (h < 1) {
-        return;
+      var natural = Math.round(main.getBoundingClientRect().height);
+      mains.push({
+        main: main,
+        line: line,
+        warn: warn,
+        situation: situation,
+        natural: natural,
+      });
+      if (natural > maxMain) {
+        maxMain = natural;
       }
-      line.style.height = h + "px";
-      line.style.minHeight = h + "px";
-      if (warn) {
-        var w = Math.round(line.getBoundingClientRect().width) || h;
-        warn.style.height = h + "px";
-        warn.style.minHeight = h + "px";
-        warn.style.width = w + "px";
+    });
+    if (maxMain < 1) {
+      return;
+    }
+
+    mains.forEach(function (item) {
+      item.main.style.minHeight = maxMain + "px";
+    });
+
+    // 2) Linjenummer (+ avviksboks) fyller den felles avgangshøyden
+    mains.forEach(function (item) {
+      var h = maxMain;
+      item.line.style.height = h + "px";
+      item.line.style.minHeight = h + "px";
+      if (item.warn) {
+        var w = Math.round(item.line.getBoundingClientRect().width) || h;
+        item.warn.style.height = h + "px";
+        item.warn.style.minHeight = h + "px";
+        item.warn.style.width = w + "px";
       }
-      if (situation) {
-        situation.style.minHeight = h + "px";
+      if (item.situation) {
+        item.situation.style.minHeight = h + "px";
       }
     });
   }
