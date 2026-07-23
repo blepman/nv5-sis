@@ -2,6 +2,18 @@
 
 Sanntidstavle vist på `https://nv5.haatetepe.no/sis/`.
 
+## Dokumentasjon
+
+| Fil | For hvem | Innhold |
+|-----|----------|---------|
+| [README.md](README.md) (denne) | Drift / oppsett | Sync, branches, kiosk, filer |
+| [AGENTS.md](AGENTS.md) | AI-agenter | Harde regler, scope, merge-vaner |
+| [docs/PROJECT_KNOWLEDGE.md](docs/PROJECT_KNOWLEDGE.md) | Agenter + vedlikeholdere | UI-lover, Entur-fakta, anti-mønstre, Tognr-peker |
+
+**Levende kunnskap:** Når noe nytt læres i arbeid eller samtale som er verdt å huske, oppdater `docs/PROJECT_KNOWLEDGE.md` (og `AGENTS.md` / denne README bare hvis regler eller drift endres).
+
+Vognløp-prediksjon («Tognr») er et **eget spor utenfor dette repoet** — se pekeren i prosjektkunnskapen.
+
 ## Branch-modell
 
 | Branch | Innhold |
@@ -13,6 +25,8 @@ Feature-branches:
 
 - Til `main`: branchnavn må inneholde `main`
 - Til `server`: branchnavn må inneholde `server`
+
+Cloud-agent: `cursor/<beskrivelse>-e142` (lowercase).
 
 ## Hvordan det fungerer
 
@@ -28,7 +42,7 @@ Feature-branches:
 
 Hamburgermeny øverst til høyre:
 
-- **Innstillinger** — holdeplasser, linjer, elementer, intervall for `main`, og **Bygg siden på nytt** (`?sync=server`)
+- **Innstillinger** — holdeplasser, linjer, elementer, intervall for `main`, visningstoggles (posisjon, belegg, tjenestekjøring, commit-hash i footer), og **Bygg siden på nytt** (`?sync=server`)
 - **Hent ny tavle** — tvinger sync av `main` (`?sync=main`)
 
 `?sync=both` (eller `?sync=1`) synker begge.
@@ -41,13 +55,21 @@ Hamburgermeny øverst til høyre:
 - Hver holdeplass viser egen oppdateringsstatus med sekunder
 - Statusfarge på oppdateringstid: grønn under 29s, gul fra 29s, rød fra 179s
 
+## Footer
+
+- Valgfritt: siste 4 tegn av server-/main-commit (meta fra PHP), styrt av «Vis commit-hash i footer»
+- Alltid: liten lenke **favicon.png** → laster ned `icons/favicon-32.png`
+
 ## Filer (`main`)
 
 - `index.html` – layout
 - `config.js` – defaults
 - `js/entur.js` – Entur GraphQL + geocoder
 - `js/site.js` – UI, poll, innstillinger
+- `js/boot.js` – tidlig boot
 - `css/kiosk.css` – stil
+- `icons/` – favicon og PWA-ikoner
+- `manifest.webmanifest` – PWA
 
 ## Lokal preview
 
