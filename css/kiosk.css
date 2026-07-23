@@ -1020,6 +1020,10 @@ body {
     --departure-line-size: 2.3rem;
   }
 
+  .departure__main {
+    min-height: 4.6rem;
+  }
+
   .departure__line {
     font-size: 1.1rem;
   }
