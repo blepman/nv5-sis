@@ -2,51 +2,139 @@
 declare(strict_types=1);
 
 /**
- * Speiler main-branchen fra GitHub og viser tavlen.
+ * Speiler server-branchen til /sis/, deretter main til content/, og viser tavlen.
  *
- * Intervall styres fra Innstillinger på tavlen (cookie nv5_github_interval).
- * $githubCheckIntervalSeconds er fallback hvis cookie mangler.
- * ?sync=1 tvinger sjekk uansett intervall.
+ * Serverfiler (index.php, .htaccess, …):
+ *   - Sjekkes ca. hver time
+ *   - ?sync=server eller ?sync=both|1 tvinger sjekk
+ *
+ * Tavle (main → content/):
+ *   - Intervall fra cookie nv5_github_interval (Innstillinger)
+ *   - ?sync=main eller ?sync=both|1 tvinger sjekk
  */
-
-$githubCheckIntervalSeconds = 300;
-
-if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !== '') {
-    $githubCheckIntervalSeconds = max(0, min(86400, (int) $_COOKIE['nv5_github_interval']));
-}
-
-$forceSync = isset($_GET['sync']) && $_GET['sync'] === '1';
 
 $owner = 'blepman';
 $repo = 'nv5-sis';
-$branch = 'main';
 $ua = 'nv5-sis-server';
+
+$serverBranch = 'server';
+$boardBranch = 'main';
+
+// Server-branch: fast timeintervall
+$serverCheckIntervalSeconds = 3600;
+
+// Tavle/main: cookie eller fallback
+$boardCheckIntervalSeconds = 300;
+if (isset($_COOKIE['nv5_github_interval']) && $_COOKIE['nv5_github_interval'] !== '') {
+    $boardCheckIntervalSeconds = max(0, min(86400, (int) $_COOKIE['nv5_github_interval']));
+}
+
+$syncParam = isset($_GET['sync']) ? strtolower(trim((string) $_GET['sync'])) : '';
+$forceServerSync = in_array($syncParam, ['server', 'both', '1', 'all'], true);
+$forceBoardSync = in_array($syncParam, ['main', 'board', 'both', '1', 'all'], true);
 
 $root = __DIR__;
 $content = $root . '/content';
-$tmp = $root . '/content.tmp';
-$shaFile = $root . '/.last-sha';
-$checkFile = $root . '/.last-check';
-$lockFile = $root . '/.sync.lock';
+$contentTmp = $root . '/content.tmp';
+$boardShaFile = $root . '/.last-sha';
+$boardCheckFile = $root . '/.last-check';
+$boardLockFile = $root . '/.sync.lock';
+
+$serverShaFile = $root . '/.server-sha';
+$serverCheckFile = $root . '/.server-check';
+$serverLockFile = $root . '/.server.lock';
 
 try {
-    $shouldSync = $forceSync || should_check_github($githubCheckIntervalSeconds, $content, $checkFile);
-    if ($shouldSync) {
-        // Ikke blokker visning hvis en annen request allerede synker
-        if (try_sync_lock($lockFile, function () use ($owner, $repo, $branch, $ua, $content, $tmp, $shaFile, $checkFile): void {
-            sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
-            file_put_contents($checkFile, (string) time());
-        }) === false && !is_file($content . '/index.html')) {
-            // Første oppsett: vent kort på lås
-            try_sync_lock($lockFile, function () use ($owner, $repo, $branch, $ua, $content, $tmp, $shaFile, $checkFile): void {
-                sync_from_github($owner, $repo, $branch, $ua, $content, $tmp, $shaFile);
-                file_put_contents($checkFile, (string) time());
+    // 1) Speil server-branchen inn i /sis/ (uten å røre content/)
+    $shouldSyncServer = $forceServerSync || should_check_github(
+        $serverCheckIntervalSeconds,
+        $serverShaFile,
+        $serverCheckFile
+    );
+    if ($shouldSyncServer) {
+        $ran = try_sync_lock($serverLockFile, function () use (
+            $owner,
+            $repo,
+            $serverBranch,
+            $ua,
+            $root,
+            $serverShaFile,
+            $serverCheckFile
+        ): void {
+            sync_server_branch($owner, $repo, $serverBranch, $ua, $root, $serverShaFile);
+            file_put_contents($serverCheckFile, (string) time());
+        });
+        if ($ran === false && !is_file($serverShaFile)) {
+            try_sync_lock($serverLockFile, function () use (
+                $owner,
+                $repo,
+                $serverBranch,
+                $ua,
+                $root,
+                $serverShaFile,
+                $serverCheckFile
+            ): void {
+                sync_server_branch($owner, $repo, $serverBranch, $ua, $root, $serverShaFile);
+                file_put_contents($serverCheckFile, (string) time());
             }, true);
         }
     }
+
+    // 2) Speil main → content/
+    $shouldSyncBoard = $forceBoardSync || should_check_github(
+        $boardCheckIntervalSeconds,
+        $content . '/index.html',
+        $boardCheckFile
+    );
+    if ($shouldSyncBoard) {
+        $ran = try_sync_lock($boardLockFile, function () use (
+            $owner,
+            $repo,
+            $boardBranch,
+            $ua,
+            $content,
+            $contentTmp,
+            $boardShaFile,
+            $boardCheckFile
+        ): void {
+            sync_board_from_github(
+                $owner,
+                $repo,
+                $boardBranch,
+                $ua,
+                $content,
+                $contentTmp,
+                $boardShaFile
+            );
+            file_put_contents($boardCheckFile, (string) time());
+        });
+        if ($ran === false && !is_file($content . '/index.html')) {
+            try_sync_lock($boardLockFile, function () use (
+                $owner,
+                $repo,
+                $boardBranch,
+                $ua,
+                $content,
+                $contentTmp,
+                $boardShaFile,
+                $boardCheckFile
+            ): void {
+                sync_board_from_github(
+                    $owner,
+                    $repo,
+                    $boardBranch,
+                    $ua,
+                    $content,
+                    $contentTmp,
+                    $boardShaFile
+                );
+                file_put_contents($boardCheckFile, (string) time());
+            }, true);
+        }
+    }
+
     render($content);
 } catch (Throwable $e) {
-    // Vis cached tavle hvis sync feiler
     if (is_file($content . '/index.html')) {
         render($content);
         exit;
@@ -82,11 +170,16 @@ function try_sync_lock(string $lockFile, callable $fn, bool $blocking = false): 
     }
 }
 
-function should_check_github(int $intervalSeconds, string $content, string $checkFile): bool
-{
-    if (!is_file($content . '/index.html')) {
+function should_check_github(
+    int $intervalSeconds,
+    string $readyMarker,
+    string $checkFile
+): bool {
+    // Server: readyMarker = .server-sha. Board: readyMarker = content/index.html
+    if (!is_file($readyMarker)) {
         return true;
     }
+
     if ($intervalSeconds <= 0) {
         return true;
     }
@@ -180,7 +273,123 @@ function copy_tree(string $src, string $dst): void
     }
 }
 
-function sync_from_github(
+function write_atomic(string $path, string $data): void
+{
+    $dir = dirname($path);
+    $tmp = $dir . '/.tmp-' . bin2hex(random_bytes(6));
+    if (file_put_contents($tmp, $data) === false) {
+        throw new RuntimeException('Kunne ikke skrive ' . $tmp);
+    }
+    if (!rename($tmp, $path)) {
+        @unlink($tmp);
+        throw new RuntimeException('Kunne ikke erstatte ' . $path);
+    }
+}
+
+function copy_atomic(string $from, string $to): void
+{
+    $data = file_get_contents($from);
+    if ($data === false) {
+        throw new RuntimeException('Kunne ikke lese ' . $from);
+    }
+    write_atomic($to, $data);
+}
+
+/**
+ * Filer/mapper som aldri skal overskrives/slettes av server-sync.
+ *
+ * @return list<string>
+ */
+function server_sync_preserve(): array
+{
+    return [
+        'content',
+        'content.tmp',
+        'content.old',
+        '.last-sha',
+        '.last-check',
+        '.sync.lock',
+        '.server-sha',
+        '.server-check',
+        '.server.lock',
+        '.git',
+    ];
+}
+
+function sync_server_branch(
+    string $owner,
+    string $repo,
+    string $branch,
+    string $ua,
+    string $root,
+    string $shaFile
+): void {
+    $o = rawurlencode($owner);
+    $r = rawurlencode($repo);
+    $b = rawurlencode($branch);
+
+    $meta = json_decode(github_get("https://api.github.com/repos/{$o}/{$r}/commits/{$b}", $ua), true);
+    $remote = is_array($meta) ? (string) ($meta['sha'] ?? '') : '';
+    if ($remote === '') {
+        throw new RuntimeException('Fant ikke commit på server');
+    }
+
+    $local = is_file($shaFile) ? trim((string) file_get_contents($shaFile)) : '';
+    if ($remote === $local && is_file($root . '/index.php')) {
+        return;
+    }
+
+    if (!class_exists('ZipArchive')) {
+        throw new RuntimeException('PHP ext-zip mangler');
+    }
+
+    $zipData = github_get("https://api.github.com/repos/{$o}/{$r}/zipball/{$b}", $ua);
+    $zipPath = sys_get_temp_dir() . '/nv5-s-' . bin2hex(random_bytes(6)) . '.zip';
+    $extract = sys_get_temp_dir() . '/nv5-sx-' . bin2hex(random_bytes(6));
+    file_put_contents($zipPath, $zipData);
+
+    try {
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new RuntimeException('Kunne ikke åpne server-zip');
+        }
+        mkdir($extract, 0755, true);
+        $zip->extractTo($extract);
+        $zip->close();
+
+        $entries = array_values(array_filter(scandir($extract) ?: [], fn($n) => $n !== '.' && $n !== '..'));
+        if (count($entries) !== 1) {
+            throw new RuntimeException('Uventet server-zip-struktur');
+        }
+
+        $source = $extract . '/' . $entries[0];
+        if (!is_file($source . '/index.php')) {
+            throw new RuntimeException('server mangler index.php');
+        }
+
+        $preserve = array_fill_keys(server_sync_preserve(), true);
+        foreach (scandir($source) ?: [] as $item) {
+            if ($item === '.' || $item === '..' || isset($preserve[$item])) {
+                continue;
+            }
+            $from = $source . '/' . $item;
+            $to = $root . '/' . $item;
+            if (is_dir($from) && !is_link($from)) {
+                // Mapper fra server-branchen (sjeldent) – kopier innhold
+                copy_tree($from, $to);
+            } else {
+                copy_atomic($from, $to);
+            }
+        }
+
+        file_put_contents($shaFile, $remote . "\n");
+    } finally {
+        @unlink($zipPath);
+        rm_tree($extract);
+    }
+}
+
+function sync_board_from_github(
     string $owner,
     string $repo,
     string $branch,
@@ -209,14 +418,14 @@ function sync_from_github(
     }
 
     $zipData = github_get("https://api.github.com/repos/{$o}/{$r}/zipball/{$b}", $ua);
-    $zipPath = sys_get_temp_dir() . '/nv5-' . bin2hex(random_bytes(6)) . '.zip';
-    $extract = sys_get_temp_dir() . '/nv5-x-' . bin2hex(random_bytes(6));
+    $zipPath = sys_get_temp_dir() . '/nv5-b-' . bin2hex(random_bytes(6)) . '.zip';
+    $extract = sys_get_temp_dir() . '/nv5-bx-' . bin2hex(random_bytes(6));
     file_put_contents($zipPath, $zipData);
 
     try {
         $zip = new ZipArchive();
         if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException('Kunne ikke åpne zip');
+            throw new RuntimeException('Kunne ikke åpne main-zip');
         }
         mkdir($extract, 0755, true);
         $zip->extractTo($extract);
@@ -224,7 +433,7 @@ function sync_from_github(
 
         $entries = array_values(array_filter(scandir($extract) ?: [], fn($n) => $n !== '.' && $n !== '..'));
         if (count($entries) !== 1) {
-            throw new RuntimeException('Uventet zip-struktur');
+            throw new RuntimeException('Uventet main-zip-struktur');
         }
 
         rm_tree($tmp);

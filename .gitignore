@@ -4,3 +4,6 @@ content.old/
 .last-sha
 .last-check
 .sync.lock
+.server-sha
+.server-check
+.server.lock
