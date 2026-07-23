@@ -70,11 +70,13 @@ if ($forceServerSync || $forceBoardSync) {
 
 try {
     // 1) Speil server-branchen inn i /sis/ (uten å røre content/)
-    $shouldSyncServer = $forceServerSync || should_check_github(
-        $serverCheckIntervalSeconds,
-        $serverShaFile,
-        $serverCheckFile
-    );
+    $shouldSyncServer = $forceServerSync
+        || !server_webroot_complete($root)
+        || should_check_github(
+            $serverCheckIntervalSeconds,
+            $serverShaFile,
+            $serverCheckFile
+        );
     if ($shouldSyncServer) {
         $ran = try_sync_lock($serverLockFile, function () use (
             $owner,
@@ -83,12 +85,21 @@ try {
             $ua,
             $root,
             $serverShaFile,
-            $serverCheckFile
+            $serverCheckFile,
+            $forceServerSync
         ): void {
-            sync_server_branch($owner, $repo, $serverBranch, $ua, $root, $serverShaFile);
+            sync_server_branch(
+                $owner,
+                $repo,
+                $serverBranch,
+                $ua,
+                $root,
+                $serverShaFile,
+                $forceServerSync
+            );
             file_put_contents($serverCheckFile, (string) time());
         });
-        if ($ran === false && !is_file($serverShaFile)) {
+        if ($ran === false && (!is_file($serverShaFile) || !server_webroot_complete($root))) {
             try_sync_lock($serverLockFile, function () use (
                 $owner,
                 $repo,
@@ -96,9 +107,18 @@ try {
                 $ua,
                 $root,
                 $serverShaFile,
-                $serverCheckFile
+                $serverCheckFile,
+                $forceServerSync
             ): void {
-                sync_server_branch($owner, $repo, $serverBranch, $ua, $root, $serverShaFile);
+                sync_server_branch(
+                    $owner,
+                    $repo,
+                    $serverBranch,
+                    $ua,
+                    $root,
+                    $serverShaFile,
+                    $forceServerSync || !server_webroot_complete($root)
+                );
                 file_put_contents($serverCheckFile, (string) time());
             }, true);
         }
@@ -330,6 +350,26 @@ function legacy_webroot_state_map(): array
 function server_sync_skip_web(): array
 {
     return ['README.md', '.gitignore'];
+}
+
+/**
+ * Filer som alltid skal ligge i /sis/ etter server-sync.
+ *
+ * @return list<string>
+ */
+function server_sync_required_files(): array
+{
+    return ['index.php', '.htaccess'];
+}
+
+function server_webroot_complete(string $root): bool
+{
+    foreach (server_sync_required_files() as $name) {
+        if (!is_file($root . '/' . $name)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function migrate_and_scrub_webroot_state(string $root, string $stateDir): void
@@ -685,7 +725,8 @@ function sync_server_branch(
     string $branch,
     string $ua,
     string $root,
-    string $shaFile
+    string $shaFile,
+    bool $force = false
 ): void {
     $o = rawurlencode($owner);
     $r = rawurlencode($repo);
@@ -698,7 +739,9 @@ function sync_server_branch(
     }
 
     $local = is_file($shaFile) ? trim((string) file_get_contents($shaFile)) : '';
-    if ($remote === $local && is_file($root . '/index.php')) {
+    // Ikke hopp over når påkrevde filer mangler (f.eks. slettet .htaccess),
+    // eller når sync er tvunget — ellers blir webroot ufullstendig.
+    if (!$force && $remote === $local && server_webroot_complete($root)) {
         return;
     }
 
@@ -729,6 +772,7 @@ function sync_server_branch(
 
         $preserve = array_fill_keys(server_sync_preserve(), true);
         $skipWeb = array_fill_keys(server_sync_skip_web(), true);
+        $copied = [];
         foreach (scandir($source) ?: [] as $item) {
             if ($item === '.' || $item === '..' || isset($preserve[$item]) || isset($skipWeb[$item])) {
                 continue;
@@ -743,8 +787,16 @@ function sync_server_branch(
             }
             if (is_dir($from)) {
                 copy_tree($from, $to);
+                $copied[] = $item . '/';
             } elseif (is_file($from)) {
                 copy_atomic($from, $to);
+                $copied[] = $item;
+            }
+        }
+
+        foreach (server_sync_required_files() as $required) {
+            if (!is_file($root . '/' . $required)) {
+                throw new RuntimeException('Server-sync mangler påkrevd fil: ' . $required);
             }
         }
 
@@ -757,6 +809,10 @@ function sync_server_branch(
         }
 
         file_put_contents($shaFile, $remote . "\n");
+        log_sync_event(
+            dirname($shaFile),
+            'server_sync sha=' . substr($remote, 0, 12) . ' files=' . implode(',', $copied)
+        );
     } finally {
         @unlink($zipPath);
         rm_tree($extract);
