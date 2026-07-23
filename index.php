@@ -177,10 +177,10 @@ try {
         }
     }
 
-    render($content, $boardShaFile);
+    render($content, $boardShaFile, $serverShaFile);
 } catch (Throwable $e) {
     if (is_file($content . '/index.html')) {
-        render($content, $boardShaFile);
+        render($content, $boardShaFile, $serverShaFile);
         exit;
     }
     http_response_code(503);
@@ -919,19 +919,51 @@ function send_security_headers(): void
     }
 }
 
+function read_sha_file(string $shaFile): string
+{
+    if (!is_readable($shaFile)) {
+        return '';
+    }
+    return trim((string) file_get_contents($shaFile));
+}
+
 function board_asset_version(string $boardShaFile, string $content): string
 {
-    if (is_readable($boardShaFile)) {
-        $sha = trim((string) file_get_contents($boardShaFile));
-        if ($sha !== '') {
-            return substr($sha, 0, 12);
-        }
+    $sha = read_sha_file($boardShaFile);
+    if ($sha !== '') {
+        return substr($sha, 0, 12);
     }
     $index = $content . '/index.html';
     if (is_file($index)) {
         return (string) filemtime($index);
     }
     return (string) time();
+}
+
+/**
+ * Injiser meta med fulle commit-SHA-er (tavlen viser siste 4 tegn i footer).
+ */
+function inject_build_sha_metas(string $html, string $serverSha, string $boardSha): string
+{
+    $tags = '';
+    if ($serverSha !== '') {
+        $tags .= '<meta name="nv5-server-sha" content="'
+            . htmlspecialchars($serverSha, ENT_QUOTES, 'UTF-8')
+            . '">' . "\n    ";
+    }
+    if ($boardSha !== '') {
+        $tags .= '<meta name="nv5-board-sha" content="'
+            . htmlspecialchars($boardSha, ENT_QUOTES, 'UTF-8')
+            . '">' . "\n    ";
+    }
+    if ($tags === '') {
+        return $html;
+    }
+    if (preg_match('/<head[^>]*>/i', $html)) {
+        $out = preg_replace('/<head[^>]*>/i', '$0' . "\n    " . rtrim($tags), $html, 1);
+        return is_string($out) ? $out : $html;
+    }
+    return $tags . $html;
 }
 
 /**
@@ -959,7 +991,7 @@ function bust_board_asset_urls(string $html, string $version): string
     return is_string($out) ? $out : $html;
 }
 
-function render(string $content, string $boardShaFile = ''): void
+function render(string $content, string $boardShaFile = '', string $serverShaFile = ''): void
 {
     $html = file_get_contents($content . '/index.html');
     if ($html === false) {
@@ -978,6 +1010,11 @@ function render(string $content, string $boardShaFile = ''): void
         }
     }
 
+    $html = inject_build_sha_metas(
+        $html,
+        read_sha_file($serverShaFile),
+        read_sha_file($boardShaFile)
+    );
     $html = bust_board_asset_urls($html, board_asset_version($boardShaFile, $content));
 
     send_security_headers();
