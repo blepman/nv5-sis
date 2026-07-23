@@ -22,6 +22,10 @@
     showJourneyProgress: document.getElementById("showJourneyProgress"),
     showOccupancy: document.getElementById("showOccupancy"),
     showServiceRuns: document.getElementById("showServiceRuns"),
+    showBuildInfo: document.getElementById("showBuildInfo"),
+    buildFooter: document.getElementById("buildFooter"),
+    buildServerSha: document.getElementById("buildServerSha"),
+    buildBoardSha: document.getElementById("buildBoardSha"),
     githubCheckInterval: document.getElementById("githubCheckInterval"),
     selectedQuays: document.getElementById("selectedQuays"),
     stopSearch: document.getElementById("stopSearch"),
@@ -146,6 +150,43 @@
     return Boolean(fallback);
   }
 
+  function shaTail(value) {
+    var raw = String(value || "").trim();
+    if (raw.length < 4) {
+      return "";
+    }
+    return raw.slice(-4).toLowerCase();
+  }
+
+  function readMetaContent(name) {
+    var node = document.querySelector('meta[name="' + name + '"]');
+    return node ? node.getAttribute("content") || "" : "";
+  }
+
+  function readBuildShas() {
+    return {
+      server: shaTail(readMetaContent("nv5-server-sha")),
+      board: shaTail(readMetaContent("nv5-board-sha")),
+    };
+  }
+
+  function updateBuildFooter() {
+    if (!els.buildFooter) {
+      return;
+    }
+    var shas = readBuildShas();
+    if (els.buildServerSha) {
+      els.buildServerSha.textContent = shas.server || "----";
+    }
+    if (els.buildBoardSha) {
+      els.buildBoardSha.textContent = shas.board || "----";
+    }
+    els.buildFooter.hidden = !(
+      settings.showBuildInfo &&
+      (shas.server || shas.board)
+    );
+  }
+
   function loadSettings() {
     var base = {
       quays: (defaults.quays || []).map(cloneQuay),
@@ -154,6 +195,7 @@
       showJourneyProgress: boolSetting(defaults.showJourneyProgress, true),
       showOccupancy: boolSetting(defaults.showOccupancy, true),
       showServiceRuns: boolSetting(defaults.showServiceRuns, true),
+      showBuildInfo: boolSetting(defaults.showBuildInfo, true),
       githubCheckIntervalSeconds: normalizeGithubInterval(
         defaults.githubCheckIntervalSeconds || 300
       ),
@@ -183,6 +225,9 @@
       if (parsed.showServiceRuns !== undefined) {
         base.showServiceRuns = Boolean(parsed.showServiceRuns);
       }
+      if (parsed.showBuildInfo !== undefined) {
+        base.showBuildInfo = Boolean(parsed.showBuildInfo);
+      }
       if (parsed.githubCheckIntervalSeconds !== undefined) {
         base.githubCheckIntervalSeconds = normalizeGithubInterval(
           parsed.githubCheckIntervalSeconds
@@ -203,6 +248,7 @@
         showJourneyProgress: settings.showJourneyProgress,
         showOccupancy: settings.showOccupancy,
         showServiceRuns: settings.showServiceRuns,
+        showBuildInfo: settings.showBuildInfo,
         githubCheckIntervalSeconds: settings.githubCheckIntervalSeconds,
       })
     );
@@ -1415,6 +1461,9 @@
     if (els.showServiceRuns) {
       els.showServiceRuns.checked = settings.showServiceRuns;
     }
+    if (els.showBuildInfo) {
+      els.showBuildInfo.checked = settings.showBuildInfo;
+    }
     els.githubCheckInterval.value = String(settings.githubCheckIntervalSeconds);
     els.stopSearch.value = "";
     els.searchResults.innerHTML = "";
@@ -1453,12 +1502,16 @@
     settings.showServiceRuns = els.showServiceRuns
       ? els.showServiceRuns.checked
       : true;
+    settings.showBuildInfo = els.showBuildInfo
+      ? els.showBuildInfo.checked
+      : true;
     settings.githubCheckIntervalSeconds = normalizeGithubInterval(
       els.githubCheckInterval.value
     );
     settings.quays = draftQuays.map(cloneQuay);
     saveSettings();
     closeSettings();
+    updateBuildFooter();
     // Kun full sync/reload når GitHub-intervallet endres (PHP leser cookie)
     if (settings.githubCheckIntervalSeconds !== prevGithub) {
       var url = new URL(window.location.href);
@@ -1858,6 +1911,7 @@
     }
 
     updateBoardTitle();
+    updateBuildFooter();
     updateClock();
     setInterval(function () {
       updateClock();

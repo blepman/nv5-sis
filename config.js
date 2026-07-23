@@ -25,6 +25,7 @@ window.NV5_SIS = {
   showJourneyProgress: true,
   showOccupancy: true,
   showServiceRuns: true,
+  showBuildInfo: true,
   // Hvor ofte PHP skal sjekke GitHub (sekunder). 0 = ved hvert sidebesøk.
   githubCheckIntervalSeconds: 300,
   githubIntervalCookie: "nv5_github_interval",
