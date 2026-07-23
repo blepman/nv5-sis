@@ -45,6 +45,8 @@
   --mono: "IBM Plex Mono", ui-monospace, monospace;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --departure-line-size: 2.75rem;
+  --departure-status-width: 0.22rem;
 }
 
 *,
@@ -321,16 +323,44 @@ body {
 }
 
 .departure {
+  --departure-status: var(--warn);
   display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) 4.75rem;
+  grid-template-columns:
+    var(--departure-status-width)
+    var(--departure-line-size)
+    minmax(0, 1fr)
+    auto;
   grid-template-rows: auto;
-  column-gap: 0.7rem;
-  row-gap: 0.45rem;
+  column-gap: 0.5rem;
+  row-gap: 0.4rem;
   align-items: center;
-  padding: 0.85rem 0.75rem;
+  padding: 0.7rem 0.4rem 0.7rem 0.35rem;
   background: color-mix(in srgb, var(--bg-lift) 88%, transparent);
   border: 1px solid var(--line);
   border-radius: 0.35rem;
+}
+
+.departure--status-realtime {
+  --departure-status: var(--ok);
+}
+
+.departure--status-scheduled {
+  --departure-status: var(--warn);
+}
+
+.departure--status-cancelled {
+  --departure-status: var(--late);
+}
+
+.departure::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1 / -1;
+  width: var(--departure-status-width);
+  border-radius: 999px;
+  background: var(--departure-status);
+  align-self: stretch;
+  justify-self: center;
 }
 
 .departure--has-situation {
@@ -346,15 +376,17 @@ body {
 }
 
 .departure__time-wrap {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  justify-self: end;
   gap: 0.12rem;
   min-width: 0;
   align-self: center;
+  padding-right: 0.05rem;
 }
 
 .departure--cancelled {
@@ -409,49 +441,31 @@ body {
 }
 
 .departure__line-wrap {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.28rem;
-  padding-top: 0.1rem;
+  justify-content: center;
   align-self: center;
-}
-
-.departure__dest-wrap {
-  grid-column: 2;
-  grid-row: 1;
   min-width: 0;
 }
 
-.departure__line-wrap::after {
-  content: "";
-  width: 2.75rem;
-  height: 0.2rem;
-  border-radius: 999px;
-  background: var(--warn);
-}
-
-.departure__line-wrap--realtime::after {
-  background: var(--ok);
-}
-
-.departure__line-wrap--scheduled::after {
-  background: var(--warn);
-}
-
-.departure__line-wrap--cancelled::after {
-  background: var(--late);
+.departure__dest-wrap {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .departure__line {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  height: 2.75rem;
-  padding: 0 0.4rem;
+  box-sizing: border-box;
+  width: var(--departure-line-size);
+  min-width: var(--departure-line-size);
+  height: var(--departure-line-size);
+  padding: 0 0.2rem;
   border-radius: 0.3rem;
   background: var(--metro);
   color: #fff;
@@ -499,11 +513,11 @@ body {
 }
 
 .departure__situation {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   grid-row: 2;
   display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) 4.75rem;
-  column-gap: 0.7rem;
+  grid-template-columns: var(--departure-line-size) minmax(0, 1fr);
+  column-gap: 0.5rem;
   align-items: start;
   min-width: 0;
 }
@@ -511,11 +525,11 @@ body {
 .departure__situation-icon {
   grid-column: 1;
   justify-self: center;
-  flex: none;
-  width: 1.65rem;
-  height: 1.65rem;
+  box-sizing: border-box;
+  width: var(--departure-line-size);
+  height: var(--departure-line-size);
   margin-top: 0;
-  border-radius: 0.25rem;
+  border-radius: 0.3rem;
   background: #f0c674;
   color: #111;
   display: inline-flex;
@@ -525,8 +539,8 @@ body {
 
 .departure__situation-icon svg {
   display: block;
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.55rem;
+  height: 1.55rem;
 }
 
 .departure__situation-text {
@@ -536,6 +550,7 @@ body {
   font-size: 0.85rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  padding-top: 0.15rem;
 }
 
 .visually-hidden {
@@ -929,12 +944,16 @@ body {
   }
 
   .departure {
-    padding: 0.55rem 0.65rem;
+    padding: 0.5rem 0.35rem 0.5rem 0.3rem;
+    --departure-line-size: 2.3rem;
   }
 
   .departure__line {
-    min-width: 2.3rem;
-    height: 2.3rem;
     font-size: 1.1rem;
+  }
+
+  .departure__situation-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 }
