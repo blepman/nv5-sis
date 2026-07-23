@@ -640,17 +640,16 @@
       return;
     }
 
-    // Featured og ticker equaliseres hver for seg (ticker skal ikke blåse opp vanlige rader)
-    var groups = {
-      featured: { items: [], maxMain: 0 },
-      ticker: { items: [], maxMain: 0 },
-    };
+    var featured = [];
+    var tickers = [];
+    var maxFeatured = 0;
 
     rows.forEach(function (row) {
       var main = row.querySelector(".departure__main");
       var line = row.querySelector(".departure__line");
       var warn = row.querySelector(".departure__situation-icon");
       var situation = row.querySelector(".departure__situation");
+      var ticker = row.querySelector(".departure__ticker");
       if (!main || !line) {
         return;
       }
@@ -666,43 +665,69 @@
       if (situation) {
         situation.style.minHeight = "";
       }
-      var natural = Math.round(main.getBoundingClientRect().height);
-      var group = row.classList.contains("departure--ticker")
-        ? groups.ticker
-        : groups.featured;
-      group.items.push({
+      if (ticker) {
+        ticker.style.height = "";
+        ticker.style.maxHeight = "";
+      }
+
+      var item = {
         main: main,
         line: line,
         warn: warn,
         situation: situation,
-      });
-      if (natural > group.maxMain) {
-        group.maxMain = natural;
+        ticker: ticker,
+      };
+
+      if (row.classList.contains("departure--ticker")) {
+        tickers.push(item);
+        return;
+      }
+
+      var natural = Math.round(main.getBoundingClientRect().height);
+      featured.push(item);
+      if (natural > maxFeatured) {
+        maxFeatured = natural;
       }
     });
 
-    Object.keys(groups).forEach(function (key) {
-      var group = groups[key];
-      if (!group.items.length || group.maxMain < 1) {
-        return;
+    var target = maxFeatured;
+    if (target < 1 && tickers.length) {
+      // Bare ticker på tavlen — bruk CSS-gulvet, ikke %/innhold som kan løpe løpsk
+      target = Math.round(
+        tickers[0].main.getBoundingClientRect().height || 0
+      );
+    }
+    if (target < 1) {
+      return;
+    }
+    // Hard tak: aldri høyere enn ~28% av viewport (ticker-loop-vern)
+    var cap = Math.max(96, Math.round(window.innerHeight * 0.28));
+    if (target > cap) {
+      target = cap;
+    }
+
+    function applySize(item) {
+      item.main.style.minHeight = target + "px";
+      item.main.style.height = target + "px";
+      item.line.style.height = target + "px";
+      item.line.style.minHeight = target + "px";
+      if (item.warn) {
+        var w = Math.round(item.line.getBoundingClientRect().width) || target;
+        item.warn.style.height = target + "px";
+        item.warn.style.minHeight = target + "px";
+        item.warn.style.width = w + "px";
       }
-      group.items.forEach(function (item) {
-        item.main.style.minHeight = group.maxMain + "px";
-        item.line.style.height = group.maxMain + "px";
-        item.line.style.minHeight = group.maxMain + "px";
-        if (item.warn) {
-          var w =
-            Math.round(item.line.getBoundingClientRect().width) ||
-            group.maxMain;
-          item.warn.style.height = group.maxMain + "px";
-          item.warn.style.minHeight = group.maxMain + "px";
-          item.warn.style.width = w + "px";
-        }
-        if (item.situation) {
-          item.situation.style.minHeight = group.maxMain + "px";
-        }
-      });
-    });
+      if (item.situation) {
+        item.situation.style.minHeight = target + "px";
+      }
+      if (item.ticker) {
+        item.ticker.style.height = target + "px";
+        item.ticker.style.maxHeight = target + "px";
+      }
+    }
+
+    featured.forEach(applySize);
+    tickers.forEach(applySize);
   }
 
   function patchSituations(now) {
