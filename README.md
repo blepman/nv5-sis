@@ -36,7 +36,7 @@ Hamburgermeny øverst til høyre:
 - Valg lagres i `localStorage` (+ cookie for `main`-intervall som PHP leser)
 - Standard **3 elementer** per quay (siste = ticker)
 - Hver holdeplass viser egen oppdateringsstatus med sekunder
-- Statusfarge: grønn under 59s, gul fra 59s, rød fra 179s siden siste vellykkede Entur-oppdatering
+- Statusfarge på oppdateringstid: grønn under 29s, gul fra 29s, rød fra 179s
 
 ## Filer (`main`)
 

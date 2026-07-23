@@ -527,7 +527,7 @@
     if (ageSec >= 179) {
       return "is-error";
     }
-    if (ageSec >= 59) {
+    if (ageSec >= 29) {
       return "is-stale";
     }
     return "is-ok";
@@ -535,19 +535,19 @@
 
   function syncStatusText(entry) {
     if (!entry || entry.pending) {
-      return { text: "Oppdaterer…", state: "is-pending" };
+      return { text: "…", state: "is-pending" };
     }
     if (entry.updatedAt) {
       var time = formatClock(entry.updatedAt, true);
       var ageState = syncAgeState(entry.updatedAt);
       if (entry.stale || entry.error) {
         return {
-          text: "Ikke oppdatert · viser " + time,
+          text: time,
           state: ageState === "is-ok" ? "is-stale" : ageState,
         };
       }
       return {
-        text: "Oppdatert " + time,
+        text: time,
         state: ageState,
       };
     }
