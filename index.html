@@ -58,6 +58,9 @@
             <span class="menu__icon" aria-hidden="true"></span>
           </button>
           <div class="menu__panel" id="menuPanel" hidden>
+            <button type="button" class="menu__item" id="addStopOpen">
+              Legg til holdeplass
+            </button>
             <button type="button" class="menu__item" id="settingsOpen">
               Innstillinger
             </button>
@@ -116,96 +119,175 @@
           </div>
         </header>
 
-        <label class="settings__field">
-          <span>Elementer per holdeplass</span>
-          <input
-            type="number"
-            id="elementsPerQuay"
-            min="2"
-            max="8"
-            step="1"
-            value="3"
-          />
-          <small>Siste element viser de neste 4 avgangstidene som ticker</small>
-        </label>
-
-        <fieldset class="settings__fieldset">
-          <legend>Avgangsinformasjon</legend>
-          <label class="settings__check">
-            <input type="checkbox" id="showJourneyProgress" checked />
-            <span>Vis sist sett / forventet posisjon</span>
-          </label>
-          <label class="settings__check">
-            <input type="checkbox" id="showOccupancy" checked />
-            <span>Vis belegg når tilgjengelig (ikke passasjertall)</span>
-          </label>
-          <label class="settings__check">
-            <input type="checkbox" id="showServiceRuns" checked />
-            <span>Vis tjenestekjøring (ellers skjules)</span>
-          </label>
-          <label class="settings__check">
-            <input type="checkbox" id="showBuildInfo" checked />
-            <span>Vis commit-hash i footer (server / main)</span>
-          </label>
-        </fieldset>
-
-        <label class="settings__field">
-          <span>Sjekk tavlekode fra GitHub (main)</span>
-          <select id="githubCheckInterval">
-            <option value="60">Hvert minutt</option>
-            <option value="300" selected>Hvert 5. minutt</option>
-            <option value="900">Hvert 15. minutt</option>
-            <option value="1800">Hvert 30. minutt</option>
-            <option value="3600">Hver time</option>
-          </select>
-          <small>
-            Styrer hvor ofte tavlen (HTML/CSS/JS) sjekkes fra main (minst
-            hvert minutt). Bruk «Hent ny tavle» i menyen for å hente med en
-            gang.
-          </small>
-        </label>
-
-        <div class="settings__field">
-          <span>Serverfiler (server-branch)</span>
+        <nav class="settings__tabs" role="tablist" aria-label="Innstillingsseksjoner">
           <button
             type="button"
-            class="settings__action"
-            id="syncServer"
-            title="Henter PHP/serverfiler fra GitHub-branchen server"
+            class="settings__tab"
+            role="tab"
+            id="settingsTabBoard"
+            aria-selected="true"
+            aria-controls="settingsPanelBoard"
+            data-tab="board"
           >
-            Bygg siden på nytt
+            Tavle
           </button>
-          <small>
-            Sjekkes automatisk hver time. Bruk knappen bare når serverkoden er
-            endret.
-          </small>
+          <button
+            type="button"
+            class="settings__tab"
+            role="tab"
+            id="settingsTabSync"
+            aria-selected="false"
+            aria-controls="settingsPanelSync"
+            data-tab="sync"
+          >
+            Oppdatering
+          </button>
+          <button
+            type="button"
+            class="settings__tab"
+            role="tab"
+            id="settingsTabQuays"
+            aria-selected="false"
+            aria-controls="settingsPanelQuays"
+            data-tab="quays"
+          >
+            Holdeplasser
+          </button>
+        </nav>
+
+        <div
+          class="settings__tabpanel"
+          id="settingsPanelBoard"
+          role="tabpanel"
+          aria-labelledby="settingsTabBoard"
+          data-tabpanel="board"
+        >
+          <label class="settings__field">
+            <span>Elementer per holdeplass</span>
+            <input
+              type="number"
+              id="elementsPerQuay"
+              min="2"
+              max="8"
+              step="1"
+              value="3"
+            />
+            <small>Siste element viser de neste 4 avgangstidene som ticker</small>
+          </label>
+
+          <fieldset class="settings__fieldset">
+            <legend>Avgangsinformasjon</legend>
+            <label class="settings__check">
+              <input type="checkbox" id="showJourneyProgress" checked />
+              <span>Vis sist sett / forventet posisjon</span>
+            </label>
+            <label class="settings__check">
+              <input type="checkbox" id="showOccupancy" checked />
+              <span>Vis belegg når tilgjengelig (ikke passasjertall)</span>
+            </label>
+            <label class="settings__check">
+              <input type="checkbox" id="showServiceRuns" checked />
+              <span>Vis tjenestekjøring (ellers skjules)</span>
+            </label>
+            <label class="settings__check">
+              <input type="checkbox" id="showBuildInfo" checked />
+              <span>Vis commit-hash i footer (server / main)</span>
+            </label>
+          </fieldset>
         </div>
 
-        <section class="settings__section" aria-labelledby="selectedQuaysTitle">
-          <h3 id="selectedQuaysTitle">Valgte holdeplasser</h3>
-          <ul class="settings__quays" id="selectedQuays"></ul>
-        </section>
-
-        <section class="settings__section" aria-labelledby="addStopTitle">
-          <h3 id="addStopTitle">Legg til holdeplass</h3>
-          <p class="settings__hint">
-            Velg «Alle retninger» eller én kai/retning, deretter linjer.
-          </p>
+        <div
+          class="settings__tabpanel"
+          id="settingsPanelSync"
+          role="tabpanel"
+          aria-labelledby="settingsTabSync"
+          data-tabpanel="sync"
+          hidden
+        >
           <label class="settings__field">
-            <span>Søk</span>
-            <input
-              type="search"
-              id="stopSearch"
-              placeholder="F.eks. Tveita T"
-              autocomplete="off"
-            />
+            <span>Sjekk tavlekode fra GitHub (main)</span>
+            <select id="githubCheckInterval">
+              <option value="60">Hvert minutt</option>
+              <option value="300" selected>Hvert 5. minutt</option>
+              <option value="900">Hvert 15. minutt</option>
+              <option value="1800">Hvert 30. minutt</option>
+              <option value="3600">Hver time</option>
+            </select>
+            <small>
+              Styrer hvor ofte tavlen (HTML/CSS/JS) sjekkes fra main (minst
+              hvert minutt). Bruk «Hent ny tavle» i menyen for å hente med en
+              gang.
+            </small>
           </label>
-          <ul class="settings__results" id="searchResults"></ul>
-          <div class="settings__quay-pick" id="quayPick" hidden>
-            <p class="settings__hint" id="quayPickTitle"></p>
-            <ul class="settings__results" id="quayResults"></ul>
+
+          <div class="settings__field">
+            <span>Serverfiler (server-branch)</span>
+            <button
+              type="button"
+              class="settings__action"
+              id="syncServer"
+              title="Henter PHP/serverfiler fra GitHub-branchen server"
+            >
+              Bygg siden på nytt
+            </button>
+            <small>
+              Sjekkes automatisk hver time. Bruk knappen bare når serverkoden er
+              endret.
+            </small>
           </div>
-        </section>
+        </div>
+
+        <div
+          class="settings__tabpanel"
+          id="settingsPanelQuays"
+          role="tabpanel"
+          aria-labelledby="settingsTabQuays"
+          data-tabpanel="quays"
+          hidden
+        >
+          <p class="settings__hint">
+            Fjern holdeplasser eller begrens hvilke linjer som vises. For å legge
+            til nye, bruk «Legg til holdeplass» i menyen.
+          </p>
+          <ul class="settings__quays" id="selectedQuays"></ul>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog
+      class="add-stop"
+      id="addStopDialog"
+      aria-labelledby="addStopTitle"
+    >
+      <form method="dialog" class="add-stop__panel" id="addStopForm">
+        <header class="add-stop__header">
+          <h2 id="addStopTitle">Legg til holdeplass</h2>
+          <button type="submit" class="add-stop__close" value="cancel">Lukk</button>
+        </header>
+
+        <p class="add-stop__step" id="addStopStep" aria-live="polite">
+          Steg 1 · Søk
+        </p>
+
+        <label class="settings__field">
+          <span>Søk etter holdeplass</span>
+          <input
+            type="search"
+            id="stopSearch"
+            placeholder="F.eks. Tveita T"
+            autocomplete="off"
+            enterkeyhint="search"
+          />
+        </label>
+
+        <p class="add-stop__hint" id="searchHint">Skriv minst 2 tegn for å søke</p>
+
+        <ul class="settings__results" id="searchResults" aria-live="polite"></ul>
+
+        <div class="add-stop__quay-pick" id="quayPick" hidden>
+          <p class="settings__hint" id="quayPickTitle"></p>
+          <ul class="settings__results" id="quayResults"></ul>
+        </div>
       </form>
     </dialog>
 
