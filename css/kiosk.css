@@ -1136,6 +1136,95 @@ a.board__footer-link:focus-visible {
   gap: 0.5rem;
 }
 
+.add-stop__quay-list {
+  gap: 0.35rem;
+}
+
+.add-stop__quay-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.add-stop__quay-option:has(.add-stop__quay-check:checked) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+
+.add-stop__quay-check {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.add-stop__quay-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.add-stop__quay-copy strong {
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.add-stop__quay-copy span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.add-stop__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: sticky;
+  bottom: 0;
+  margin: 0.25rem -1rem -1rem;
+  padding: 0.85rem 1rem 1rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #121a2b 0%, transparent) 0%,
+    #121a2b 28%
+  );
+  border-top: 1px solid var(--line);
+}
+
+.add-stop__confirm,
+.add-stop__back {
+  appearance: none;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-stop__confirm {
+  background: color-mix(in srgb, var(--accent) 20%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  color: var(--text);
+}
+
+.add-stop__confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.add-stop__back {
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--muted);
+}
+
 @keyframes rise {
   from {
     opacity: 0;

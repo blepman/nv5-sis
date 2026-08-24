@@ -37,6 +37,9 @@
     quayPick: document.getElementById("quayPick"),
     quayPickTitle: document.getElementById("quayPickTitle"),
     quayResults: document.getElementById("quayResults"),
+    quayPickActions: document.getElementById("quayPickActions"),
+    addStopConfirm: document.getElementById("addStopConfirm"),
+    addStopBack: document.getElementById("addStopBack"),
     searchHint: document.getElementById("searchHint"),
     addStopStep: document.getElementById("addStopStep"),
   };
@@ -1558,6 +1561,13 @@
     if (els.quayPick) {
       els.quayPick.hidden = true;
     }
+    if (els.quayPickActions) {
+      els.quayPickActions.hidden = true;
+    }
+    if (els.addStopConfirm) {
+      els.addStopConfirm.disabled = true;
+      els.addStopConfirm.textContent = "Legg til valgte";
+    }
     if (els.quayResults) {
       els.quayResults.innerHTML = "";
     }
@@ -1668,6 +1678,9 @@
   async function runSearch(text) {
     els.quayPick.hidden = true;
     els.quayResults.innerHTML = "";
+    if (els.quayPickActions) {
+      els.quayPickActions.hidden = true;
+    }
     if (els.addStopStep) {
       els.addStopStep.textContent = "Steg 1 · Søk";
     }
@@ -1799,6 +1812,118 @@
     };
   }
 
+  function quayChoiceFromInput(input) {
+    var linesRaw = input.getAttribute("data-lines") || "[]";
+    var lines = [];
+    try {
+      lines = JSON.parse(linesRaw);
+    } catch (error) {
+      lines = [];
+    }
+    return {
+      kind: input.getAttribute("data-kind") || "quay",
+      id: input.getAttribute("data-quay"),
+      name: input.getAttribute("data-name"),
+      direction: input.getAttribute("data-direction") || "",
+      lines: lines,
+    };
+  }
+
+  function renderQuayChoiceCheckbox(kind, id, name, direction, lines, title, detail) {
+    return (
+      "<li>" +
+      '<label class="add-stop__quay-option">' +
+      '<input type="checkbox" class="add-stop__quay-check" data-kind="' +
+      escapeHtml(kind) +
+      '" data-quay="' +
+      escapeHtml(id) +
+      '" data-name="' +
+      escapeHtml(name) +
+      '" data-direction="' +
+      escapeHtml(direction) +
+      '" data-lines="' +
+      escapeHtml(JSON.stringify(lines)) +
+      '">' +
+      '<span class="add-stop__quay-copy"><strong>' +
+      escapeHtml(title) +
+      "</strong><span>" +
+      escapeHtml(detail) +
+      "</span></span></label></li>"
+    );
+  }
+
+  function updateQuaySelectionState() {
+    if (!els.quayResults || !els.addStopConfirm) {
+      return;
+    }
+    var checked = els.quayResults.querySelectorAll(".add-stop__quay-check:checked");
+    var count = checked.length;
+    els.addStopConfirm.disabled = count === 0;
+    els.addStopConfirm.textContent =
+      count === 0
+        ? "Legg til valgte"
+        : count === 1
+          ? "Legg til 1 holdeplass"
+          : "Legg til " + count + " holdeplasser";
+    if (els.searchHint && count > 0) {
+      els.searchHint.textContent =
+        count === 1
+          ? "1 retning valgt — legg til eller velg flere"
+          : count + " retninger valgt — legg til eller velg flere";
+    }
+  }
+
+  function handleQuaySelectionChange(event) {
+    var input = event.target.closest(".add-stop__quay-check");
+    if (!input || !els.quayResults) {
+      return;
+    }
+    if (input.checked && input.getAttribute("data-kind") === "stopPlace") {
+      els.quayResults
+        .querySelectorAll('.add-stop__quay-check[data-kind="quay"]')
+        .forEach(function (item) {
+          item.checked = false;
+        });
+    } else if (input.checked && input.getAttribute("data-kind") === "quay") {
+      var allDirections = els.quayResults.querySelector(
+        '.add-stop__quay-check[data-kind="stopPlace"]'
+      );
+      if (allDirections) {
+        allDirections.checked = false;
+      }
+    }
+    updateQuaySelectionState();
+  }
+
+  function backToStopSearch() {
+    if (els.quayPick) {
+      els.quayPick.hidden = true;
+    }
+    if (els.quayPickActions) {
+      els.quayPickActions.hidden = true;
+    }
+    if (els.quayResults) {
+      els.quayResults.innerHTML = "";
+    }
+    if (els.addStopStep) {
+      els.addStopStep.textContent = "Steg 1 · Søk";
+    }
+    var query = els.stopSearch ? els.stopSearch.value.trim() : "";
+    if (els.searchHint) {
+      els.searchHint.textContent =
+        query.length >= 2
+          ? "Velg holdeplass i listen"
+          : "Skriv minst 2 tegn for å søke";
+    }
+    if (query.length >= 2) {
+      runSearch(query);
+    }
+    if (els.stopSearch) {
+      els.stopSearch.focus();
+      scrollIntoPanel(els.stopSearch);
+    }
+  }
+
   async function pickStop(stopId, stopName) {
     els.searchResults.innerHTML = "";
     els.stopSearch.value = stopName;
@@ -1806,13 +1931,18 @@
       els.searchHint.textContent = "Henter retninger…";
     }
     if (els.addStopStep) {
-      els.addStopStep.textContent = "Steg 2 · Velg retning";
+      els.addStopStep.textContent = "Steg 2 · Velg retning(er)";
     }
     try {
       var stop = await window.NV5Entur.fetchStopQuays(defaults, stopId);
       els.quayPick.hidden = false;
+      if (els.quayPickActions) {
+        els.quayPickActions.hidden = false;
+      }
       els.quayPickTitle.textContent =
-        "Velg retning/plattform for " + stop.name + " (eller alle)";
+        "Velg én eller flere retninger for " +
+        stop.name +
+        " (eller alle retninger)";
 
       // Kun kaier med linjer — de andre er ofte uten avganger
       var usefulQuays = (stop.quays || []).filter(function (quay) {
@@ -1845,41 +1975,36 @@
         return String(a.publicCode).localeCompare(String(b.publicCode), "nb");
       });
 
-      var options =
-        '<li><button type="button" class="settings__choice" data-kind="stopPlace" data-quay="' +
-        escapeHtml(stop.id) +
-        '" data-name="' +
-        escapeHtml(stop.name) +
-        '" data-direction="Alle retninger" data-lines="' +
-        escapeHtml(JSON.stringify(allLines)) +
-        '"><strong>Alle retninger</strong><span>Viser avganger for hele holdeplassen</span></button></li>';
+      var options = renderQuayChoiceCheckbox(
+        "stopPlace",
+        stop.id,
+        stop.name,
+        "Alle retninger",
+        allLines,
+        "Alle retninger",
+        "Viser avganger for hele holdeplassen"
+      );
 
       options += usefulQuays
         .map(function (quay) {
           var choice = formatQuayChoice(quay);
-          return (
-            "<li>" +
-            '<button type="button" class="settings__choice" data-kind="quay" data-quay="' +
-            escapeHtml(quay.id) +
-            '" data-name="' +
-            escapeHtml(stop.name) +
-            '" data-direction="' +
-            escapeHtml(choice.direction) +
-            '" data-lines="' +
-            escapeHtml(JSON.stringify(quay.lines || [])) +
-            '"><strong>' +
-            escapeHtml(choice.title) +
-            "</strong><span>" +
-            escapeHtml(choice.detail) +
-            "</span></button>" +
-            "</li>"
+          return renderQuayChoiceCheckbox(
+            "quay",
+            quay.id,
+            stop.name,
+            choice.direction,
+            quay.lines || [],
+            choice.title,
+            choice.detail
           );
         })
         .join("");
 
       els.quayResults.innerHTML = options;
+      updateQuaySelectionState();
       if (els.searchHint) {
-        els.searchHint.textContent = "Velg retning eller «Alle retninger»";
+        els.searchHint.textContent =
+          "Kryss av én eller flere retninger, deretter «Legg til valgte»";
       }
       scrollIntoPanel(els.quayPick);
     } catch (error) {
@@ -1887,6 +2012,9 @@
       els.quayResults.innerHTML =
         '<li class="settings__empty">Kunne ikke hente kaier</li>';
       els.quayPick.hidden = false;
+      if (els.quayPickActions) {
+        els.quayPickActions.hidden = false;
+      }
       if (els.searchHint) {
         els.searchHint.textContent = "Kunne ikke hente retninger";
       }
@@ -1894,15 +2022,12 @@
     }
   }
 
-  async function addQuay(quay) {
+  async function addQuayToSettings(quay) {
     var exists = settings.quays.some(function (item) {
       return item.id === quay.id && item.kind === (quay.kind || "quay");
     });
     if (exists) {
-      if (els.searchHint) {
-        els.searchHint.textContent = "Holdeplassen finnes allerede på tavlen";
-      }
-      return;
+      return false;
     }
     var next = cloneQuay(quay);
     if (quay.lines && quay.lines.length) {
@@ -1923,13 +2048,50 @@
     settings.quays.push(next);
     if (isSettingsOpen()) {
       draftQuays.push(cloneQuay(next));
-      renderSelectedQuays();
     }
-    saveSettings();
-    closeAddStop();
-    boardCache = {};
-    lastBoardSignature = "";
-    refresh();
+    return true;
+  }
+
+  async function addSelectedQuays() {
+    if (!els.quayResults) {
+      return;
+    }
+    var inputs = Array.prototype.slice.call(
+      els.quayResults.querySelectorAll(".add-stop__quay-check:checked")
+    );
+    if (!inputs.length) {
+      return;
+    }
+
+    var added = 0;
+    var skipped = 0;
+    for (var i = 0; i < inputs.length; i++) {
+      var choice = quayChoiceFromInput(inputs[i]);
+      if (await addQuayToSettings(choice)) {
+        added++;
+      } else {
+        skipped++;
+      }
+    }
+
+    if (added > 0) {
+      if (isSettingsOpen()) {
+        renderSelectedQuays();
+      }
+      saveSettings();
+      closeAddStop();
+      boardCache = {};
+      lastBoardSignature = "";
+      refresh();
+      return;
+    }
+
+    if (els.searchHint) {
+      els.searchHint.textContent =
+        skipped === 1
+          ? "Holdeplassen finnes allerede på tavlen"
+          : "Alle valgte finnes allerede på tavlen";
+    }
   }
 
   function isMenuOpen() {
@@ -2085,25 +2247,18 @@
     }
 
     if (els.quayResults) {
-      els.quayResults.addEventListener("click", function (event) {
-        var btn = event.target.closest("[data-quay]");
-        if (!btn) {
-          return;
-        }
-        var linesRaw = btn.getAttribute("data-lines") || "[]";
-        var lines = [];
-        try {
-          lines = JSON.parse(linesRaw);
-        } catch (error) {
-          lines = [];
-        }
-        addQuay({
-          kind: btn.getAttribute("data-kind") || "quay",
-          id: btn.getAttribute("data-quay"),
-          name: btn.getAttribute("data-name"),
-          direction: btn.getAttribute("data-direction") || "",
-          lines: lines,
-        });
+      els.quayResults.addEventListener("change", handleQuaySelectionChange);
+    }
+
+    if (els.addStopConfirm) {
+      els.addStopConfirm.addEventListener("click", function () {
+        addSelectedQuays();
+      });
+    }
+
+    if (els.addStopBack) {
+      els.addStopBack.addEventListener("click", function () {
+        backToStopSearch();
       });
     }
   }
