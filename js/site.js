@@ -12,12 +12,16 @@
     status: document.getElementById("status"),
     menuToggle: document.getElementById("menuToggle"),
     menuPanel: document.getElementById("menuPanel"),
+    addStopOpen: document.getElementById("addStopOpen"),
     settingsOpen: document.getElementById("settingsOpen"),
     syncServer: document.getElementById("syncServer"),
     syncBoard: document.getElementById("syncBoard"),
     clearLocal: document.getElementById("clearLocal"),
     settingsDialog: document.getElementById("settingsDialog"),
+    addStopDialog: document.getElementById("addStopDialog"),
     settingsSave: document.getElementById("settingsSave"),
+    settingsTabs: document.querySelectorAll(".settings__tab"),
+    settingsTabpanels: document.querySelectorAll(".settings__tabpanel"),
     elementsPerQuay: document.getElementById("elementsPerQuay"),
     showJourneyProgress: document.getElementById("showJourneyProgress"),
     showOccupancy: document.getElementById("showOccupancy"),
@@ -33,6 +37,8 @@
     quayPick: document.getElementById("quayPick"),
     quayPickTitle: document.getElementById("quayPickTitle"),
     quayResults: document.getElementById("quayResults"),
+    searchHint: document.getElementById("searchHint"),
+    addStopStep: document.getElementById("addStopStep"),
   };
 
   let settings = loadSettings();
@@ -1510,6 +1516,83 @@
       .join("");
   }
 
+  function isSettingsOpen() {
+    return Boolean(els.settingsDialog && els.settingsDialog.open);
+  }
+
+  function isAddStopOpen() {
+    return Boolean(els.addStopDialog && els.addStopDialog.open);
+  }
+
+  function setSettingsTab(tabId) {
+    if (els.settingsTabs) {
+      els.settingsTabs.forEach(function (btn) {
+        var active = btn.getAttribute("data-tab") === tabId;
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+    if (els.settingsTabpanels) {
+      els.settingsTabpanels.forEach(function (panel) {
+        panel.hidden = panel.getAttribute("data-tabpanel") !== tabId;
+      });
+    }
+  }
+
+  function scrollIntoPanel(element) {
+    if (!element) {
+      return;
+    }
+    requestAnimationFrame(function () {
+      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }
+
+  function resetAddStop() {
+    clearTimeout(searchTimer);
+    if (els.stopSearch) {
+      els.stopSearch.value = "";
+    }
+    if (els.searchResults) {
+      els.searchResults.innerHTML = "";
+    }
+    if (els.quayPick) {
+      els.quayPick.hidden = true;
+    }
+    if (els.quayResults) {
+      els.quayResults.innerHTML = "";
+    }
+    if (els.searchHint) {
+      els.searchHint.textContent = "Skriv minst 2 tegn for å søke";
+    }
+    if (els.addStopStep) {
+      els.addStopStep.textContent = "Steg 1 · Søk";
+    }
+  }
+
+  function openAddStop() {
+    resetAddStop();
+    if (typeof els.addStopDialog.showModal === "function") {
+      els.addStopDialog.showModal();
+    } else {
+      els.addStopDialog.setAttribute("open", "");
+    }
+    window.setTimeout(function () {
+      if (els.stopSearch) {
+        els.stopSearch.focus();
+        scrollIntoPanel(els.stopSearch);
+      }
+    }, 60);
+  }
+
+  function closeAddStop() {
+    resetAddStop();
+    if (typeof els.addStopDialog.close === "function") {
+      els.addStopDialog.close();
+    } else {
+      els.addStopDialog.removeAttribute("open");
+    }
+  }
+
   async function openSettings() {
     draftQuays = settings.quays.map(cloneQuay);
     els.elementsPerQuay.value = String(settings.elementsPerQuay);
@@ -1526,10 +1609,7 @@
       els.showBuildInfo.checked = settings.showBuildInfo;
     }
     els.githubCheckInterval.value = String(settings.githubCheckIntervalSeconds);
-    els.stopSearch.value = "";
-    els.searchResults.innerHTML = "";
-    els.quayPick.hidden = true;
-    els.quayResults.innerHTML = "";
+    setSettingsTab("board");
     renderSelectedQuays();
     if (typeof els.settingsDialog.showModal === "function") {
       els.settingsDialog.showModal();
@@ -1588,15 +1668,29 @@
   async function runSearch(text) {
     els.quayPick.hidden = true;
     els.quayResults.innerHTML = "";
-    if (!text || text.trim().length < 2) {
+    if (els.addStopStep) {
+      els.addStopStep.textContent = "Steg 1 · Søk";
+    }
+    var query = (text || "").trim();
+    if (!query || query.length < 2) {
       els.searchResults.innerHTML = "";
+      if (els.searchHint) {
+        els.searchHint.textContent = "Skriv minst 2 tegn for å søke";
+      }
       return;
     }
+    if (els.searchHint) {
+      els.searchHint.textContent = "Søker…";
+    }
     try {
-      var stops = await window.NV5Entur.searchStops(defaults, text.trim());
+      var stops = await window.NV5Entur.searchStops(defaults, query);
       if (!stops.length) {
         els.searchResults.innerHTML =
           '<li class="settings__empty">Ingen treff</li>';
+        if (els.searchHint) {
+          els.searchHint.textContent = "Prøv et annet søkeord";
+        }
+        scrollIntoPanel(els.searchResults);
         return;
       }
       els.searchResults.innerHTML = stops
@@ -1614,10 +1708,18 @@
           );
         })
         .join("");
+      if (els.searchHint) {
+        els.searchHint.textContent = stops.length + " treff — velg holdeplass";
+      }
+      scrollIntoPanel(els.searchResults);
     } catch (error) {
       console.error(error);
       els.searchResults.innerHTML =
         '<li class="settings__empty">Søk feilet</li>';
+      if (els.searchHint) {
+        els.searchHint.textContent = "Kunne ikke hente forslag. Prøv igjen.";
+      }
+      scrollIntoPanel(els.searchResults);
     }
   }
 
@@ -1700,6 +1802,12 @@
   async function pickStop(stopId, stopName) {
     els.searchResults.innerHTML = "";
     els.stopSearch.value = stopName;
+    if (els.searchHint) {
+      els.searchHint.textContent = "Henter retninger…";
+    }
+    if (els.addStopStep) {
+      els.addStopStep.textContent = "Steg 2 · Velg retning";
+    }
     try {
       var stop = await window.NV5Entur.fetchStopQuays(defaults, stopId);
       els.quayPick.hidden = false;
@@ -1770,19 +1878,30 @@
         .join("");
 
       els.quayResults.innerHTML = options;
+      if (els.searchHint) {
+        els.searchHint.textContent = "Velg retning eller «Alle retninger»";
+      }
+      scrollIntoPanel(els.quayPick);
     } catch (error) {
       console.error(error);
       els.quayResults.innerHTML =
         '<li class="settings__empty">Kunne ikke hente kaier</li>';
       els.quayPick.hidden = false;
+      if (els.searchHint) {
+        els.searchHint.textContent = "Kunne ikke hente retninger";
+      }
+      scrollIntoPanel(els.quayPick);
     }
   }
 
   async function addQuay(quay) {
-    var exists = draftQuays.some(function (item) {
+    var exists = settings.quays.some(function (item) {
       return item.id === quay.id && item.kind === (quay.kind || "quay");
     });
     if (exists) {
+      if (els.searchHint) {
+        els.searchHint.textContent = "Holdeplassen finnes allerede på tavlen";
+      }
       return;
     }
     var next = cloneQuay(quay);
@@ -1801,10 +1920,16 @@
     } else {
       await ensureQuayLines(next);
     }
-    draftQuays.push(next);
-    renderSelectedQuays();
-    els.quayPick.hidden = true;
-    els.stopSearch.value = "";
+    settings.quays.push(next);
+    if (isSettingsOpen()) {
+      draftQuays.push(cloneQuay(next));
+      renderSelectedQuays();
+    }
+    saveSettings();
+    closeAddStop();
+    boardCache = {};
+    lastBoardSignature = "";
+    refresh();
   }
 
   function isMenuOpen() {
@@ -1883,6 +2008,19 @@
       closeMenu();
       openSettings();
     });
+    if (els.addStopOpen) {
+      els.addStopOpen.addEventListener("click", function () {
+        closeMenu();
+        openAddStop();
+      });
+    }
+    if (els.settingsTabs) {
+      els.settingsTabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          setSettingsTab(tab.getAttribute("data-tab") || "board");
+        });
+      });
+    }
     els.settingsSave.addEventListener("click", function (event) {
       event.preventDefault();
       applySettings();
@@ -1924,41 +2062,50 @@
       quay.lineIds = selected;
     });
 
-    els.stopSearch.addEventListener("input", function () {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(function () {
-        runSearch(els.stopSearch.value);
-      }, 300);
-    });
-
-    els.searchResults.addEventListener("click", function (event) {
-      var btn = event.target.closest("[data-stop]");
-      if (!btn) {
-        return;
-      }
-      pickStop(btn.getAttribute("data-stop"), btn.getAttribute("data-name"));
-    });
-
-    els.quayResults.addEventListener("click", function (event) {
-      var btn = event.target.closest("[data-quay]");
-      if (!btn) {
-        return;
-      }
-      var linesRaw = btn.getAttribute("data-lines") || "[]";
-      var lines = [];
-      try {
-        lines = JSON.parse(linesRaw);
-      } catch (error) {
-        lines = [];
-      }
-      addQuay({
-        kind: btn.getAttribute("data-kind") || "quay",
-        id: btn.getAttribute("data-quay"),
-        name: btn.getAttribute("data-name"),
-        direction: btn.getAttribute("data-direction") || "",
-        lines: lines,
+    if (els.stopSearch) {
+      els.stopSearch.addEventListener("input", function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+          runSearch(els.stopSearch.value);
+        }, 300);
       });
-    });
+      els.stopSearch.addEventListener("focus", function () {
+        scrollIntoPanel(els.stopSearch);
+      });
+    }
+
+    if (els.searchResults) {
+      els.searchResults.addEventListener("click", function (event) {
+        var btn = event.target.closest("[data-stop]");
+        if (!btn) {
+          return;
+        }
+        pickStop(btn.getAttribute("data-stop"), btn.getAttribute("data-name"));
+      });
+    }
+
+    if (els.quayResults) {
+      els.quayResults.addEventListener("click", function (event) {
+        var btn = event.target.closest("[data-quay]");
+        if (!btn) {
+          return;
+        }
+        var linesRaw = btn.getAttribute("data-lines") || "[]";
+        var lines = [];
+        try {
+          lines = JSON.parse(linesRaw);
+        } catch (error) {
+          lines = [];
+        }
+        addQuay({
+          kind: btn.getAttribute("data-kind") || "quay",
+          id: btn.getAttribute("data-quay"),
+          name: btn.getAttribute("data-name"),
+          direction: btn.getAttribute("data-direction") || "",
+          lines: lines,
+        });
+      });
+    }
   }
 
   function start() {
