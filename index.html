@@ -286,7 +286,20 @@
 
         <div class="add-stop__quay-pick" id="quayPick" hidden>
           <p class="settings__hint" id="quayPickTitle"></p>
-          <ul class="settings__results" id="quayResults"></ul>
+          <ul class="settings__results add-stop__quay-list" id="quayResults"></ul>
+          <div class="add-stop__actions" id="quayPickActions" hidden>
+            <button
+              type="button"
+              class="add-stop__confirm"
+              id="addStopConfirm"
+              disabled
+            >
+              Legg til valgte
+            </button>
+            <button type="button" class="add-stop__back" id="addStopBack">
+              Tilbake til søk
+            </button>
+          </div>
         </div>
       </form>
     </dialog>
